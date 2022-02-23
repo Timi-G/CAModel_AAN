@@ -4,35 +4,30 @@ from math import dist
 '''Conflicts Resolution'''
 # resolving an object's conflict radius (size=1)
 def obj_radius(size, pos):
-    mpos=[0,pos[1]]
-    mpos[0] = pos[0] + size
-    rad = pos+mpos
+    rad=[pos]
 
-    while (mpos[0]>=pos[0]-size) and (mpos[1]>=pos[1]-size):
-        if mpos[1]-1>=pos[1]-size:
-            mpos[1]=mpos[1]-1
-            rad+=mpos
-        if mpos[0]-1>=pos[0]-size:
-            mpos[0]=mpos[0]-1
-            rad+=mpos
-        if mpos[0]==pos[0]-size and mpos[1]==pos[1]-size:
-            break
-
-    mpos[1] = mpos[1] + size
-    rad+=mpos
-
-    while (mpos[0]<=pos[0]+size) and (mpos[1]<=pos[1]+size):
-        if mpos[1]+1<=pos[1]+size:
-            mpos[1]=mpos[1]+1
-            rad+=mpos
-        if mpos[0]+1<=pos[0]+size:
-            mpos[0]=mpos[0]+1
-            rad+=mpos
-        if mpos[0]==pos[0]+size and mpos[1]==pos[1]+size:
-            break
-
-    crad = conv_to_2d(rad,2)
-    return crad
+    for m in range(size):
+        rn=len(rad)
+        for n in range(rn):
+            nrad=[]
+            if [rad[n][0],rad[n][1]+1] not in rad:
+                nrad+=[[rad[n][0],rad[n][1]+1]]
+            if [rad[n][0]+1,rad[n][1]+1] not in rad:
+                nrad+=[[rad[n][0]+1,rad[n][1]+1]]
+            if [rad[n][0]+1,rad[n][1]] not in rad:
+                nrad+=[[rad[n][0]+1,rad[n][1]]]
+            if [rad[n][0]+1,rad[n][1]-1] not in rad:
+                nrad+=[[rad[n][0]+1,rad[n][1]-1]]
+            if [rad[n][0],rad[n][1]-1] not in rad:
+                nrad+=[[rad[n][0],rad[n][1]-1]]
+            if [rad[n][0]-1,rad[n][1]-1] not in rad:
+                nrad+=[[rad[n][0]-1,rad[n][1]-1]]
+            if [rad[n][0]-1,rad[n][1]] not in rad:
+                nrad+=[[rad[n][0]-1,rad[n][1]]]
+            if [rad[n][0]-1,rad[n][1]+1] not in rad:
+                nrad+=[[rad[n][0]-1,rad[n][1]+1]]
+            rad+=nrad
+    return rad
 
 def conv_to_2d(arr,col):
     darr= [arr[i:i+col] for i in range(0,len(arr),col)]
@@ -142,7 +137,7 @@ def conf_flight_movement(flights,fl,obs_pos):
     con_rad=[c for c in con_rad if c!=des]
 
     # best path SW
-    if tdes[0] - dep[0] < 0 and tdes[1] - dep[1] < 0:
+    if tdes[0] - pos[0] < 0 and tdes[1] - pos[1] < 0:
         # SW
         if [pos[0] - 1, pos[1] - 1] not in con_rad:
             SW(pos)
@@ -183,7 +178,7 @@ def conf_flight_movement(flights,fl,obs_pos):
             return
 
     # best path WW
-    if tdes[0] - dep[0] < 0 and tdes[1] - dep[1] == 0:
+    if tdes[0] - pos[0] < 0 and tdes[1] - pos[1] == 0:
         # WW
         if [pos[0] - 1, pos[1]] not in con_rad:
             WW(pos)
@@ -224,7 +219,7 @@ def conf_flight_movement(flights,fl,obs_pos):
             return
 
     # best path NW
-    if tdes[0] - dep[0] < 0 and tdes[1] - dep[1] > 0:
+    if tdes[0] - pos[0] < 0 and tdes[1] - pos[1] > 0:
         # NW
         if [pos[0] - 1, pos[1] + 1] not in con_rad:
             NW(pos)
@@ -265,7 +260,7 @@ def conf_flight_movement(flights,fl,obs_pos):
             return
 
     # best path NN
-    if tdes[0] - dep[0] == 0 and tdes[1] - dep[1] > 0:
+    if tdes[0] - pos[0] == 0 and tdes[1] - pos[1] > 0:
         # NN
         if [pos[0], pos[1] + 1] not in con_rad:
             NN(pos)
@@ -306,7 +301,7 @@ def conf_flight_movement(flights,fl,obs_pos):
             return
 
     # best path NE
-    if tdes[0] - dep[0] > 0 and tdes[1] - dep[1] > 0:
+    if tdes[0] - pos[0] > 0 and tdes[1] - pos[1] > 0:
         # NE
         if [pos[0] + 1, pos[1] + 1] not in con_rad:
             NE(pos)
@@ -347,7 +342,7 @@ def conf_flight_movement(flights,fl,obs_pos):
             return
 
     # best path EE
-    if tdes[0] - dep[0] > 0 and tdes[1] - dep[1] == 0:
+    if tdes[0] - pos[0] > 0 and tdes[1] - pos[1] == 0:
         # EE
         if [pos[0] + 1, pos[1]] not in con_rad:
             EE(pos)
@@ -388,7 +383,7 @@ def conf_flight_movement(flights,fl,obs_pos):
             return
 
     # best path SE
-    if tdes[0] - dep[0] > 0 and tdes[1] - dep[1] < 0:
+    if tdes[0] - pos[0] > 0 and tdes[1] - pos[1] < 0:
         # SE
         if [pos[0] + 1, pos[1] - 1] not in con_rad:
             SE(pos)
@@ -427,7 +422,7 @@ def conf_flight_movement(flights,fl,obs_pos):
             return
 
     # best path SS
-    if tdes[0] - dep[0] == 0 and tdes[1] - dep[1] < 0:
+    if tdes[0] - pos[0] == 0 and tdes[1] - pos[1] < 0:
         # SS
         if [pos[0], pos[1] - 1] not in con_rad:
             SS(pos)
