@@ -219,7 +219,7 @@ def split_num(num):
 
 def inst_flights(num_flights,dpx,dpy,dest):
     # arrange data placement in rand function
-    if dpx < 1:
+    if dpx < 0:
         dpx=[dpx,0]
     else:
         dpx=[0,dpx]
@@ -251,26 +251,38 @@ def _se_dep_flights(se,sed,dest):
     return fl
 
 # func to create flights
-def create_flights(north,south,east,west,dest,spread):
+def create_flights(north,south,east,west,dest,spread,aspace):
     global gnum_sdf
 
     num_sdf=[north,south,east,west]
     gnum_sdf = [a + b for a, b in zip(num_sdf, gnum_sdf)]
 
     spn = split_num(north)
-    ospn = split_num(gnum_sdf[0])
+    if spread==1:
+        ospn = aspace
+    else:
+        ospn = split_num(gnum_sdf[0])
     n=_nw_dep_flights(spn[0],ospn[0]*spread,dest) + _ne_dep_flights(spn[1],ospn[1]*spread,dest)
 
     sps = split_num(south)
-    osps = split_num(gnum_sdf[1])
+    if spread==1:
+        osps = aspace
+    else:
+        osps = split_num(gnum_sdf[1])
     s=_se_dep_flights(sps[0],osps[0]*spread,dest) + _sw_dep_flights(sps[1],osps[1]*spread,dest)
 
     spe = split_num(east)
-    ospe = split_num(gnum_sdf[2])
+    if spread==1:
+        ospe = aspace
+    else:
+        ospe = split_num(gnum_sdf[2])
     e=_ne_dep_flights(spe[0],(ospn[1]+ospe[0])*spread,dest) + _se_dep_flights(spe[1],(osps[0]+ospe[1])*spread,dest)
 
     spw = split_num(west)
-    ospw = split_num(gnum_sdf[3])
+    if spread==1:
+        ospw = aspace
+    else:
+        ospw = split_num(gnum_sdf[3])
     w=_nw_dep_flights(spw[0],(ospn[0]+ospw[0])*spread,dest) + _sw_dep_flights(spw[1],(osps[1]+ospw[1])*spread,dest)
 
     flights = n + s + e + w
@@ -290,6 +302,8 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions):
     for f in flights:
         f.way_p=[w.pos for w in waypoints]
 
+    flights_dest = [fd.dest for fd in flights]
+
     while True:
         print('flights_pos:', flights_pos)
         for flight in flights:
@@ -304,7 +318,6 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions):
         wdens(waypoints,flights_pos)
 
 # stop simulation when destination is reached
-        flights_dest = [fd.dest for fd in flights]
         if flights_pos == flights_dest:
             break
 

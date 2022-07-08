@@ -1,3 +1,4 @@
+from collections import Counter
 from math import dist
 import random
 
@@ -53,23 +54,7 @@ class Air_Object:
         self.agg_distn+=[self.distn]
 
     def avg_transit_time(self):
-        no_journ=self.agg_pos.count(self.dest)
-        t=0
-        ts=[]
-
-        for f in self.agg_pos:
-            t+=1
-            if f==self.dest:
-                ts+=[t]
-                t=0
-
-        if no_journ != 0:
-            avg = sum(ts) / no_journ
-        else:
-            avg = 0
-        self.avg_tnstime=avg
-
-        return avg
+        self.avg_tnstime = avg_trans_time(self.agg_pos,self.dest)
 
 # class for other objects and points in the air during flight
 class Free_Air_Object:
@@ -127,7 +112,7 @@ class TMA(Field):
 
 
 '''Global Variables'''
-con_rad = []
+# con_rad = []
 ccrad = 0
 gnum_sdf = [0,0,0,0]
 hov_fli = 0
@@ -151,6 +136,14 @@ def col_dept(flights):
     for f in flights:
         f.agg_pos=f.agg_pos+f.dept
         f.collect_distn()
+
+def col_dept_sing(flight):
+    f=flight
+    f.agg_pos = f.agg_pos + f.dept
+    f.collect_distn()
+
+def asgn_var(var,val):
+    var=val
 
 def res_mov(ps,flights):
 
@@ -182,6 +175,31 @@ def res_mov(ps,flights):
             # collect each flight disp. within p_rad
             p.ob_mov+=[mod_path]
         p.agg_vel=list(map(sum,p.ob_mov))
+
+# calc avg transit time
+def avg_trans_time(agg_pos,des):
+    no_journ=0
+
+    if isinstance(des[0],list):
+        for d in des:
+            no_journ += agg_pos.count(d)
+    else:
+        no_journ = agg_pos.count(des)
+
+    t = 0
+    ts = []
+
+    for f in agg_pos:
+        t += 1
+        if f == des or f in des:
+            ts += [t]
+            t = 0
+
+    if no_journ != 0:
+        avg = sum(ts) / no_journ
+    else:
+        avg = 0
+    return avg
 
 def av_distn(tma,flights):
     # get total t_step of experiment
@@ -305,26 +323,38 @@ def _se_dep_flights(se,sed,dest,size):
     return fl
 
 # func to create flights
-def create_flights(north,south,east,west,dest,size,spread):
+def create_flights(north,south,east,west,dest,size,spread,aspace):
     global gnum_sdf
 
     num_sdf=[north,south,east,west]
     gnum_sdf = [a + b for a, b in zip(num_sdf, gnum_sdf)]
 
     spn = split_num(north)
-    ospn = split_num(gnum_sdf[0])
+    if spread==1:
+        ospn = [aspace,aspace]
+    else:
+        ospn = split_num(gnum_sdf[0])
     n=_nw_dep_flights(spn[0],ospn[0]*spread,dest,size) + _ne_dep_flights(spn[1],ospn[1]*spread,dest,size)
 
     sps = split_num(south)
-    osps = split_num(gnum_sdf[1])
+    if spread==1:
+        osps = [aspace,aspace]
+    else:
+        osps = split_num(gnum_sdf[1])
     s=_se_dep_flights(sps[0],osps[0]*spread,dest,size) + _sw_dep_flights(sps[1],osps[1]*spread,dest,size)
 
     spe = split_num(east)
-    ospe = split_num(gnum_sdf[2])
+    if spread==1:
+        ospe = [aspace,aspace]
+    else:
+        ospe = split_num(gnum_sdf[2])
     e=_ne_dep_flights(spe[0],(ospn[1]+ospe[0])*spread,dest,size) + _se_dep_flights(spe[1],(osps[0]+ospe[1])*spread,dest,size)
 
     spw = split_num(west)
-    ospw = split_num(gnum_sdf[3])
+    if spread==1:
+        ospw = [aspace,aspace]
+    else:
+        ospw = split_num(gnum_sdf[3])
     w=_nw_dep_flights(spw[0],(ospn[0]+ospw[0])*spread,dest,size) + _sw_dep_flights(spw[1],(osps[1]+ospw[1])*spread,dest,size)
 
     flights = n + s + e + w
@@ -359,9 +389,10 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,total_tstep):
                 if flight.pos in flight.way_p:
                     flight.way_p.remove(flight.pos)
 
-                # cycle flight
+                # cycle flight/boundary condtion
                 if flight.pos==flight.dest:
                     flight.pos[0],flight.pos[1]=flight.dept[0],flight.dept[1]
+                    col_dept_sing(flight)
 
         # collect flight densities at points for each t_step
             dens(waypoints, flights_pos, total_tstep)
@@ -386,15 +417,14 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,total_tstep):
             if flights_pos == flights_dest:
                 break
 
-    # get average transit time of flights
-    for f in flights:
-        f.avg_transit_time()
-
     path_plots(flights)
     wp_plots(wpp)
     obs_plots(obp)
     plt.show()
 
+    # get average transit time of flights
+    for f in flights:
+        f.avg_transit_time()
     av_distn(tma,flights)
     vel_per_t(points,flights,total_tstep)
 

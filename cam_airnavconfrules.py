@@ -57,9 +57,7 @@ def cord_best_path(flight):
     # sht_dist = min(map(lambda x,y: dist(x,y), pcord,dest))
 
 # to define conflict radius of flights
-def objs_con_rad(objects):
-    global con_rad
-    con_rad = []
+def objs_con_rad(objects,con_rad):
 
     # if-statement is so flight objects at destination have no conflict radius
     for obj in objects:
@@ -126,9 +124,11 @@ def conf_flight_movement(flights,fl,obs_pos):
     if pos == des:
         return
 
-    objs_con_rad(fls)
     global con_rad
     global hov_fli
+
+    con_rad=[]
+    objs_con_rad(fls,con_rad)
 
     # add pos of obstructions to con_rad
     con_rad+=obs_pos

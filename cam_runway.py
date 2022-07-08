@@ -1,6 +1,5 @@
 import random
 
-
 class Runway:
     def __init__(self,no_cells,runway_group):
         self.no_cells=no_cells

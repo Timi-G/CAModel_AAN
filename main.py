@@ -112,6 +112,36 @@ def col_dept(flights):
         f.collect_pos()
         f.collect_distn()
 
+
+# collect number of flights moving per t_step with an area
+# def col_fl_per_t(ps,flights):
+#     ftl=[]
+#
+#     # create list of all agg_pos
+#     t_agpos=[flight.agg_pos for flight in flights]
+#     # try..except to handle n which is beyond index for list elements
+#     for p in ps:
+#         for n in range(len(t_agpos[0])):
+#             ft=0
+#             for m in t_agpos:
+#                 try:
+#                     if m[n] != m[n+1] and m[n] in p.con_rad:
+#                         ft+=1
+#                 except:
+#                     pass
+#             ftl+=[ft]
+#         p.agg_vel=ftl
+#         # for n in range(len(t_agpos[0])):
+#         #     ft=0
+#         #     for m in t_agpos:
+#         #         try:
+#         #             if m[n] != m[n+1] and m[n] in p.con_rad:
+#         #                 ft+=1
+#         #         except:
+#         #             pass
+#         #     ftl+=[ft]
+#         # p.agg_vel=ftl
+
 # collect number of flights moving per t_step
 def col_fl_per_t(flights):
     ftl=[]
@@ -852,6 +882,18 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions):
 
     plt.show()
 
+# result from multiple simulations
+def sim_res(tma,flights,points):
+    for f in flights:
+        f.avg_transit_time()
+        f.sim_avg_tnstime += [f.avg_tnstime]
+        f.sim_agg_pos += [f.agg_pos]
+        f.sim_agg_distn += [f.agg_distn]
+    for p in points:
+        p.sim_avg_dens += [p.avg_dens]
+        p.sim_avg_vel += [p.avg_vel]
+    tma.sim_av_dist += [tma.av_dist]
+
 # container function for flight simulation
 def simulate(tma,flights,waypoints,obstructions):
     global flights_no
@@ -863,7 +905,13 @@ def simulate(tma,flights,waypoints,obstructions):
 
 
 '''create flight, waypoint & obstruction objects f1,f2,f3,w1,w2,ob1,ob2...
-and include all objects needed in respective experiment list'''
+and include all objects needed in respective experiment list
+
+for density around points,use p1.sim_agg_dens,p2.sim_agg_dens,w1.sim_agg_dens....
+get average velocity with p1.sim_avg_vel,p2.sim_avg_vel...
+get average distance with tma.sim_av_dist
+get average transit time with f1.sim_avg_tnstime, f2.sim_avg_tnstime...
+'''
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     tma = TMA()
