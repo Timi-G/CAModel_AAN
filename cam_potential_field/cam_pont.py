@@ -8,9 +8,9 @@ and include all objects needed in respective experiment list
 ________________________________________________________________
 #2 Implementation B Of Cellular Automata Model
 
-create multiple randomly positioned aircrafts using rand_aircrafts func.:-
-no_aircrafts:number of a_crafts, max_pot:max potential any of the a_craft can have
-max_size:max size any of the a_crafts can have, plt_colors:list of colors that will represent the flight paths
+create multiple randomly positioned aircrafts using rand_aircrafts func.:
+no_aircrafts: number of a_crafts, max_pot:max potential any of the a_craft can have
+max_size: max size any of the a_crafts can have, plt_colors:list of colors that will represent the flight paths
 
 display info of randomly generated a_crafts using disp_ran_acraft_info()
 get list of parameters on randomly generated a_crafts using rand_acraft_info()
