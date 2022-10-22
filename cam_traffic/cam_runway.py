@@ -1,7 +1,23 @@
 import random
+import time
 import numpy as np
 from matplotlib import pyplot as plt
 
+class Aircraft:
+    def __init__(self,size,fuel):
+        self.size = size
+        self.fuel = fuel
+
+    def fuel_depl(self):
+        self.fuel=self.fuel-(self.size//2)
+
+    def size_fuel_prop(self):
+        siz_2_fue= [
+                    [1,500,1000],
+                    [2,1000,2000],
+                    [3,2000,4000],
+                    [4,4000,8000]
+                     ]
 
 class Runway:
     def __init__(self, no_cells, runway_group):
@@ -51,8 +67,8 @@ class Runway:
             return
         # entry
         for dx, n in enumerate(rw_fl):
-            if n > 0:
-                spacing = self.spacing_rules(flight, n)
+            if n != 0:
+                spacing = self.spacing_rules(flight.size, n.size)
                 if dx <= spacing:
                     self.ent = False
                     return
@@ -78,15 +94,15 @@ class Runway:
         r_fl = self.runway_flights
         tot_ext_space = 0
         ext_space = 0
-        prev_acs = []
+        prev_acs = [0] #[0] allows extra space to be derived when r_fl[0] is an aircraft
         bet_spc = []
         ac = []
 
         for a in r_fl:
             # collect first non_zero sized aircraft
             if a == 0:
-                prev_acs += [r_fl[a]]
-            if all([n == 0 for n in prev_acs]) and a > 0:
+                prev_acs += [a]
+            if all([n == 0 for n in prev_acs]) and a != 0:
                 ac += [a]
                 prev_acs = []
 
@@ -95,7 +111,7 @@ class Runway:
                 bet_spc += [a]
             # get extra spaces
             if len(ac) > 1:
-                space = self.spacing_rules(*ac)
+                space = self.spacing_rules(ac[0].size,ac[1].size)
                 ext_space = len(bet_spc) - space
                 ac = []
                 bet_spc = []
@@ -111,10 +127,6 @@ class Runway:
     def density(self,t_step):
         self.agg_dens=[c/self.no_cells for c in self.agg_op_fl]
         self.avg_dens=sum(self.agg_dens)/t_step
-    #
-    # def density(self, t_step):
-    #     self.tot_op_fl = sum(self.agg_op_fl)
-    #     self.dens = self.tot_op_fl / t_step
 
 
 class Traffic_Control:
@@ -124,12 +136,27 @@ class Traffic_Control:
 
     def create_pool(self, size_dist):
         self.no_pool_cont = sum(size_dist)
-        self.size_one = size_dist[0]
-        self.size_two = size_dist[1]
-        self.size_three = size_dist[2]
-        self.size_four = size_dist[3]
-        self.main_pool = [1] * self.size_one + [2] * self.size_two + [3] * self.size_three + [4] * self.size_four
+        self.main_pool = self.create_aircraft(size_dist)
         random.shuffle(self.main_pool)
+
+    def create_aircraft(self,sd):
+        t_rwc=self.tot_rwcells
+        thr_trwc=t_rwc//3  #trwc/t_rwc: total runway cells
+
+        pool=[]
+        for dx,ac in enumerate(sd,1):
+            for n in range(ac):
+                # ensuring fuel is proportional to aircraft size using dx
+                pool+=[Aircraft(size=dx,fuel=random.randint(t_rwc+(2*thr_trwc)*dx,t_rwc*2*dx))]
+        return pool
+
+    def add_runway(self, level1_structure):
+        # level1_structure should be in format [[50,35,60],[25,50,40],[45,50]]
+        # in the above example, there are 3 groups and 8 runways
+        # innermost lists represent groups 1,2,3... from left to right
+        # and integers represent number of cells in each runway
+        self.lvl1_struct = level1_structure
+        self.tot_rwcells=sum([sum(rw) for rw in self.lvl1_struct])
 
     def test_runway(self):
         run = Runway(no_cells=50, runway_group=2)
@@ -146,7 +173,6 @@ class Traffic_Control:
 
             # flights move forward in runway
             run.mov_per_tstep()
-            # print('current pool',self.main_pool)
 
             # flights enter runway from pool
             ent = self.main_pool.pop(-1)
@@ -196,7 +222,7 @@ class Traffic_Control:
         print(lv)
         return lv
 
-    def runway_per_tstep(self, t_step, node_rule):
+    def runway_per_tstep(self, t_step, node_rule, prob):
         self.t_step = t_step
         lvl1, lvl2, lvl3 = self.converg_group(self.lvl1_struct)
         self.l1, self.l2, self.l3 = lvl1, lvl2, lvl3
@@ -220,28 +246,35 @@ class Traffic_Control:
             # lvl1
             for dx, gp in enumerate(lv1):
                 if not all([rw.runway_flights[-1] == 0 for rw in gp]):
+                    node_choice = random.choices([node_rule, 'random'], weights=[prob, 100 - prob],k=1)[0]
                     # get min sized aircraft
-                    if node_rule == 'min':
-                        ex_fl = min([rw.runway_flights[-1] for rw in gp if rw.runway_flights[-1] != 0])
+                    if node_choice == 'min':
+                        ex_fl_s = [rw.runway_flights[-1].size for rw in gp if rw.runway_flights[-1] != 0]
+                        min_fl_s = min(ex_fl_s)
+                        ex_rw = ex_fl_s.index(min_fl_s)
                     # get max sized aircraft
-                    elif node_rule == 'max':
-                        ex_fl = max([rw.runway_flights[-1] for rw in gp if rw.runway_flights[-1] != 0])
+                    elif node_choice == 'max':
+                        ex_fl_s = [rw.runway_flights[-1].size for rw in gp if rw.runway_flights[-1] != 0]
+                        max_fl_s=max(ex_fl_s)
+                        ex_rw = ex_fl_s.index(max_fl_s)
                     # get random sized aircraft
-                    elif node_rule == 'random':
+                    elif node_choice == 'random':
                         ex_fl = random.choice([rw.runway_flights[-1] for rw in gp if rw.runway_flights[-1] != 0])
-                        # get random sized aircraft
-                    elif node_rule == 'health':
+                        ex_rw = [rw.runway_flights[-1] for rw in gp].index(ex_fl)
+                    # runway with aircrafts with least fuel_level
+                    elif node_choice == 'fuel_level':
+                        rw_fl = [sum([ac.fuel for ac in rw.runway_flights if ac!=0]) for rw in gp]
+                        min_fl = min(rw_fl)
+                        ex_rw = rw_fl.index(min_fl)
+                    # get most healthy runway
+                    elif node_choice == 'health':
                         for l in self.levels:
                             for rw in l:
                                 rw.extra_spacing()
-                        ex_fl = max([rw.tot_ext_space for rw in gp])
+                        max_sp = max([rw.tot_ext_space for rw in gp])
+                        ex_rw = [rw.tot_ext_space for rw in gp].index(max_sp)
                     else:
-                        raise Exception('node_rule choice is invalid or empty. Argument can be \'min\', \'max\', \'random\', \'health\'')
-
-                    if node_rule == 'health':
-                        ex_rw = [rw.tot_ext_space for rw in gp].index(ex_fl)
-                    else:
-                        ex_rw = [rw.runway_flights[-1] for rw in gp].index(ex_fl)
+                        raise Exception('node_rule choice is invalid or empty. Argument can be \'min\', \'max\', \'random\', \'fuel_level\' or \'health\'')
 
                     lv1[dx][ex_rw].exit_runway()
                     if l1out[dx] == 0:
@@ -251,7 +284,6 @@ class Traffic_Control:
             for gp in range(len(lvl1)):
                 lvl1[gp].mov_per_tstep()
                 ent = self.main_pool[-1]
-                # print('Aircrafts in main_pool is exhausted \nCreate sufficient with Traffic.create_pool()')
                 lvl1[gp].entry_runway(ent)
                 if lvl1[gp].ent:
                     try:
@@ -264,27 +296,35 @@ class Traffic_Control:
             # lvl2
             # runway with least sized aircraft in last cell takes an exit
             if not all([rw.runway_flights[-1] == 0 for rw in lvl2]):
-                if node_rule=='min':
+                node_choice = random.choices([node_rule, 'random'], weights=[prob, 100 - prob],k=1)[0]
+                print(node_choice)
+                if node_choice=='min':
                     # get least sized aircraft
-                    ex_fl = min([rw.runway_flights[-1] for rw in lvl2 if rw.runway_flights[-1] != 0])
-                elif node_rule=='max':
+                    ex_fl_s = [rw.runway_flights[-1].size for rw in lvl2 if rw.runway_flights[-1] != 0]
+                    min_fl_s = min(ex_fl_s)
+                    ex_rw = ex_fl_s.index(min_fl_s)
+                elif node_choice=='max':
                     # get max sized aircraft
-                    ex_fl = max([rw.runway_flights[-1] for rw in lvl2 if rw.runway_flights[-1] != 0])
-                elif node_rule=='random':
+                    ex_fl_s = [rw.runway_flights[-1].size for rw in lvl2 if rw.runway_flights[-1] != 0]
+                    max_fl_s = max(ex_fl_s)
+                    ex_rw = ex_fl_s.index(max_fl_s)
+                elif node_choice=='random':
                     # get random sized aircraft
                     ex_fl = random.choice([rw.runway_flights[-1] for rw in lvl2 if rw.runway_flights[-1] != 0])
-                elif node_rule == 'health':
+                    ex_rw = [rw.runway_flights[-1] for rw in lvl2].index(ex_fl)
+                # runway with aircrafts with least fuel_level
+                elif node_choice == 'fuel_level':
+                    rw_fl = [sum([ac.fuel for ac in rw.runway_flights if ac!=0]) for rw in lvl2]
+                    min_fl = min(rw_fl)
+                    ex_rw = rw_fl.index(min_fl)
+                elif node_choice == 'health':
                     for l in self.levels:
                         for rw in l:
                             rw.extra_spacing()
-                    ex_fl = max([rw.tot_ext_space for rw in lvl2])
+                    max_sp = max([rw.tot_ext_space for rw in lvl2])
+                    ex_rw = [rw.tot_ext_space for rw in lvl2].index(max_sp)
                 else:
-                    raise Exception('node_rule choice is invalid or empty. Argument can be \'min\', \'max\', \'random\', or \'health\'')
-                # get runway with appropriate sized aircraft
-                if node_rule == 'health':
-                    ex_rw = [rw.tot_ext_space for rw in lvl2].index(ex_fl)
-                else:
-                    ex_rw = [rw.runway_flights[-1] for rw in lvl2].index(ex_fl)
+                    raise Exception('node_rule choice is invalid or empty. Argument can be \'min\', \'max\', \'random\', \'fuel_level\' or \'health\'')
                 lvl2[ex_rw].exit_runway()
                 if l2out == 0:
                     l2out = lvl2[ex_rw].exit_flight
@@ -314,7 +354,7 @@ class Traffic_Control:
                     print('main_pool not created, create main_pool using object.create_pool command')
                     # adjust position of flights in runway after exit
             lvl3[0].mov_per_tstep()
-            if l2out > 0:
+            if l2out != 0:
                 lvl3[0].entry_runway(l2out)
                 lvl3[0].exit = False
             if lvl3[0].ent:
@@ -322,30 +362,25 @@ class Traffic_Control:
             trans_lvl = l1out + [l2out]
             tl = len([n for n in trans_lvl if n != 0])
 
-            # collect total operational flights across all levels
+            # collect total operational flights across all levels and deplete aircraft fuel
             for l in self.levels:
                 for rw in l:
                     rw.get_tot_op_fl()
+                    # deplete aircraft fuel
+                    for ac in rw.runway_flights:
+                        if ac != 0:
+                            ac.fuel_depl()
 
             print('Main Pool No. ', len(self.main_pool))
             print('Total Flights ', total_op_flights(self.main_pool, lvl1, lvl2, lvl3, tl))
-            print(f'Main Pool: {self.main_pool}')
-            print(
-                f'Aircrafts: {[rw.runway_flights for rw in lvl1]}\n{[rw.runway_flights for rw in lvl2]}\n{[rw.runway_flights for rw in lvl3]}')
-            print('')
+            print(f'Main Pool: {[ac.size for ac in self.main_pool]}')
+            print(f'Aircrafts: {chng_list(lvl1)}\n{chng_list(lvl2)}\n{chng_list(lvl3)}\n')
 
         # calc density of operational flights across all levels
         for l in self.levels:
             for rw in l:
                 rw.density(t_step)
-        print('Final Main Pool:', self.main_pool)
-
-    def add_runway(self, level1_structure):
-        # level1_structure should be in format [[50,35,60],[25,50,40],[45,50]]
-        # in the above example, there are 3 groups and 8 runways
-        # innermost lists represent groups 1,2,3... from left to right
-        # and integers represent number of cells in each runway
-        self.lvl1_struct = level1_structure
+        print('Final Main Pool:', [ac.size for ac in self.main_pool])
 
     def converg_group(self, lvl1_strut):
         lvl1 = self.create_rw_groups(lvl1_strut)
@@ -375,12 +410,10 @@ class Traffic_Control:
     def create_rw_groups(self, group_strut, run_way=Runway):
         lvl = []
         for gdx, group in enumerate(group_strut, 1):
-            # print(group)
             for rw in group:
                 if isinstance(rw, float):
                     break
                 lvl += [run_way(rw, gdx)]
-        # print(lvl)
         return lvl
 
     def total_op_flights(self):
@@ -443,6 +476,27 @@ def obj_to_attr(obj, attr_name):
     if hasattr(obj, attr_name):
         return obj.vables[attr]
 
+# to change aircraft objects of runways in different levels to their respective sizes for better result display
+def chng_list(raw_list):
+    fin_list=[]
+
+    def chng_elem(l):
+        new_list = []
+        for ac in l.runway_flights:
+            if ac!=0:
+                new_list += [ac.size]
+            elif ac==0:
+                new_list+=[0]
+        return new_list
+
+    for l in raw_list:
+        if isinstance(l,list):
+            chng_list(l)
+        else:
+            fin_list+=[chng_elem(l)]
+
+    return fin_list
+
 
 def simulate(runways):
     pass
@@ -452,17 +506,19 @@ def simulate(runways):
 Traffic_Control class represents experiment enviroment
 #1 Create Traffic_Control object e.g tf=Traffic_Control()
 
-#2 Create pool of aircrafts (i.e create_pool method) to be used all through simulation.
-Set distribution of aircraft sizes in pool using size_dist argument e.g size_dist=[40,50,45,65] means
-40 size_1, 50 size_2, 45 size_3 & 65 size_4 aircrafts
-
-#3 Setup group of runways by instantiating method add.runway
+#2 Setup group of runways by instantiating method add.runway
 e.g tf.add_runway([[20,40,30,10],[30,50],[45]]) means
 [20,40,30,10] is a group of runways with 20,40,30 & 10 steps, [30,45] is another group.
 Note that no. of steps in any level2 runway is average of all the steps in corresponding level1 runway group
 
+#3 Create pool of aircrafts (i.e create_pool method) to be used all through simulation.
+Set distribution of aircraft sizes in pool using size_dist argument e.g size_dist=[40,50,45,65] means
+40 size_1, 50 size_2, 45 size_3 & 65 size_4 aircrafts
+
 #4 Run simulation with runway_per_tstep method.
-node_rule parameter takes string argument 'min','max','random' or 'health'
+node_rule parameter takes string argument 'min','max','random','fuel_level' or 'health'
+prob argument is probability that chosen node_rule will be used over 'random' with 100 being max probability variable
+hint: prob can be set to 100 to force chosen node_rule to be used
 
 #5 Calc density of sections with object.section_density method
 section_density method takes 2 arguments:
@@ -488,8 +544,17 @@ e.g tf.landing_rate()
 '''
 
 if __name__ == '__main__':
+    # start time
+    st = time.process_time()
+
     tf = Traffic_Control()
-    tf.create_pool(size_dist=[40, 50, 45, 65])
     tf.add_runway([[20, 40, 30, 10], [30, 50], [20, 15, 25], [45]])
-    tf.runway_per_tstep(t_step=200, node_rule='random')
+    tf.create_pool(size_dist=[40, 50, 45, 65])
+    tf.runway_per_tstep(t_step=200, node_rule='health', prob=30)
+
+    # end time
+    et = time.process_time()
+    # execution time
+    exc_time = et-st
     # tf.test_runway()
+
