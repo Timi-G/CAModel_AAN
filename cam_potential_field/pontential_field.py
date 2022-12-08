@@ -4,9 +4,11 @@ import random
 import numpy as np
 from matplotlib import pyplot as plt
 
-from ..cam_air_nav.cam_airnav_mod import Air_Object, Free_Air_Object, av_distn, avg_trans_time,\
-                            col_dept, path_plots
-from ..cam_air_nav.cam_airnavconfrules import conv_to_2d, obj_radius, objs_con_rad
+from cam_air_nav.cam_airnav_mod import Air_Object, Free_Air_Object, avg_trans_time, col_dept, path_plots
+from cam_air_nav.cam_airnavconfrules import obj_radius
+# from ..cam_air_nav.cam_airnav_mod import Air_Object, Free_Air_Object, av_distn, avg_trans_time,\
+#                             col_dept, path_plots
+# from ..cam_air_nav.cam_airnavconfrules import conv_to_2d, obj_radius, objs_con_rad
 
 
 '''Object Field Classes'''

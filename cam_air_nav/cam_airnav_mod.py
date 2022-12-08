@@ -1,4 +1,3 @@
-from collections import Counter
 from math import dist
 import random
 
@@ -6,7 +5,6 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 import cam_airnavconfrules as ccf
-
 
 '''Object Classes'''
 # dept:departure, dest:destination, size:object_size_class
