@@ -53,7 +53,7 @@ def cord_best_path(flight):
     dep_des = dist(flight.pos,flight.dest)
 
     return c_shdist
-    # flight with shortest distance
+    # flight with shortest distance, to use variable later
     # sht_dist = min(map(lambda x,y: dist(x,y), pcord,dest))
 
 # to define conflict radius of flights
@@ -113,7 +113,6 @@ def conf_flight_movement(flights,fl,obs_pos):
     temp_des = cord_best_path(fl)
     fl.tdes = temp_des
 
-    dep=fl.dept
     pos=fl.pos
     tdes=temp_des
     des=fl.dest

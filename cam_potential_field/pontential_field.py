@@ -6,9 +6,6 @@ from matplotlib import pyplot as plt
 
 from cam_air_nav.cam_airnav_mod import Air_Object, Free_Air_Object, avg_trans_time, col_dept, path_plots
 from cam_air_nav.cam_airnavconfrules import obj_radius
-# from ..cam_air_nav.cam_airnav_mod import Air_Object, Free_Air_Object, av_distn, avg_trans_time,\
-#                             col_dept, path_plots
-# from ..cam_air_nav.cam_airnavconfrules import conv_to_2d, obj_radius, objs_con_rad
 
 
 '''Object Field Classes'''
@@ -271,21 +268,17 @@ def res_field(grid_size,pos,max_pot):
         for m in bg_grid:
             grid+=[m[0:grid_size[0]]]
         grid=grid[size-pos[1]+1:size-pos[1]+1+grid_size[1]]
-        # grid=bg_grid[0:grid_size[0]][size-pos[1]:size-pos[1]+grid_size[1]]
     # longest potential reduc. is u_start-d
     elif size == len_lst[3]:
         for m in bg_grid:
             grid+=[m[size-pos[0]:size-pos[0]+grid_size[0]]]
         grid=grid[:grid_size[1]]
-        # grid=bg_grid[size-pos[0]:size-pos[0]+grid_size[0]][-1-grid_size:]
     return grid
 
 # calc resultant potential
 def reslt_pot(pots):
     pts=[np.matrix(p) for p in pots]
-    # print("pts",pts)
     res=sum(pts)
-    # print("res",res)
     res = res.tolist()
     return res
 
@@ -355,14 +348,12 @@ def nxt_pos(field,pos):
 
     vals=pos_vals(fd,cords) # vals content sequence is clockwise i.e pos,E,SE,S,...,NE
     mvals=[i-vals[0] for i in vals]
-    # print(f'cords = {cords}\n vals= {vals}\n mvals= {mvals}')
 
     # try stmnt to keep a_craft in a pos when potn around it is lesser or same
     try:
         npos_i=mvals.index(min([j for j in mvals if j > 0]))
     except:
         npos_i=mvals.index(min([j for j in mvals if j >= 0]))
-    # print(npos_i)
     return npos_i
 
 # flight conflict resolution
@@ -382,10 +373,6 @@ def conf_resl(field,flights,flight):
     rf = field
 
     npi = nxt_pos(rf,fp)
-
-    # global con_rad
-    # con_rad = []
-    # objs_con_rad(fls,con_rad)
 
     # rf[pos[0]][pos[1] + 1] == pt + 1 former concept
     # no movement
@@ -508,7 +495,7 @@ def mov_obstr_sim(tma,objs,mov_obstructions,t_step):
             dests = []
             sim_field_gen(tma,objs,mov_obstructions)
 
-def sim_iter(flights,flights_pos,waypoints,stat_obstructions,mov_obstructions,tma,total_tstep=1):
+def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,total_tstep=1):
     global dests
 
     col_dept(flights)
@@ -538,7 +525,6 @@ def sim_iter(flights,flights_pos,waypoints,stat_obstructions,mov_obstructions,tm
                 conf_resl(tma[0].fld,flights,flight)
                 flight.collect_pos()
                 flight.collect_distn()
-                # print(f'{__name__} max= {flight.pot}')
 
             # stop simulation when destination is reached
             if all([f.pot==tma[0].max_pot for f in flights]):
@@ -564,11 +550,10 @@ def sim_iter(flights,flights_pos,waypoints,stat_obstructions,mov_obstructions,tm
     for f in flights:
         f.avg_tnstime = avg_trans_time(f.agg_pos,des)
 
-    # av_distn(tma,flights)
+    # av_distn(tma,flights) average distance func needs update
     vel_per_t(tma[0],flights)
 
 def simulate(flights,waypoints,stat_obstructions,mov_obstructions,tma,total_tstep=1):
-    flights_pos = [f.pos for f in flights]
 
-    sim_iter(flights,flights_pos,waypoints,stat_obstructions,mov_obstructions,tma,total_tstep)
+    sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,total_tstep)
 

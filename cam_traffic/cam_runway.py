@@ -1,7 +1,6 @@
 import random
 import time
-import numpy as np
-from matplotlib import pyplot as plt
+
 
 class Aircraft:
     def __init__(self,size,fuel):
@@ -20,17 +19,20 @@ class Aircraft:
                      ]
 
 class Runway:
-    def __init__(self, no_cells, runway_group):
+    def __init__(self, no_cells, runway_group, mov_prob=100):
         self.no_cells = no_cells
         self.runway_group = runway_group
         self.runway_flights = [0] * no_cells
+        self.cell1_mov = 0
         self.lvl = 0
+        self.mov_prob = mov_prob
         self.exit = False
         self.ent = False
         self.tot_op_fl = 0
         self.tot_mov = 0
         self.agg_op_fl = []
         self.agg_dens = []
+
 
     def exit_runway(self):
         rw_fl = self.runway_flights
@@ -45,6 +47,9 @@ class Runway:
             return
         # movement only when there is space in last cell
         if rw_fl[-1] == 0 or self.exit:
+            mov_by_prob = random.choices([1, 0], weights=[self.mov_prob, 100 - self.mov_prob], k=1)[0]
+            if mov_by_prob == 0:
+                return
             for n in range(-1, -len(rw_fl), -1):
                 self.runway_flights[n] = rw_fl[n - 1]
                 # print('first:',self.runway_flights[n],' second',rw_fl[n-1])
@@ -53,6 +58,11 @@ class Runway:
             self.tot_mov += 1
             # confirm for entry func that movement occurred
             self.moved = True
+
+            # check movement in first cell for cellular section_flow calc
+            # cell_2 will be occupied by aircraft initially in cell_1
+            if rw_fl[1] != 0:
+                self.cell1_mov += 1
 
     def entry_runway(self, flight):
         rw_fl = self.runway_flights
@@ -76,6 +86,8 @@ class Runway:
                     self.ent = True
                     self.runway_flights[0] = flight
                     # self.runway_flights[dx-(spacing+1)]=flight
+                    # runway first cell gets occupied whenever there is an entry
+                    self.cell1_mov += 1
                     return
 
     def spacing_rules(self, a, b):
@@ -222,9 +234,11 @@ class Traffic_Control:
         print(lv)
         return lv
 
-    def runway_per_tstep(self, t_step, node_rule, prob):
+    def runway_per_tstep(self, t_step, node_prob, mov_prob, node_rule=None):
+        if node_rule is None:
+            node_rule = ['random']
         self.t_step = t_step
-        lvl1, lvl2, lvl3 = self.converg_group(self.lvl1_struct)
+        lvl1, lvl2, lvl3 = self.converg_group(self.lvl1_struct,mov_prob)
         self.l1, self.l2, self.l3 = lvl1, lvl2, lvl3
         self.levels=[lvl1,lvl2,lvl3]
         # partition lvls as list of lists by runway_group
@@ -246,7 +260,8 @@ class Traffic_Control:
             # lvl1
             for dx, gp in enumerate(lv1):
                 if not all([rw.runway_flights[-1] == 0 for rw in gp]):
-                    node_choice = random.choices([node_rule, 'random'], weights=[prob, 100 - prob],k=1)[0]
+                    node_choice = random.choices([*node_rule, 'random'], weights=[*node_prob, 100 - sum(node_prob)],k=1)[0]
+                    print(f'lvl_1 group_{dx+1} node_choice ', node_choice)
                     # get min sized aircraft
                     if node_choice == 'min':
                         ex_fl_s = [rw.runway_flights[-1].size for rw in gp if rw.runway_flights[-1] != 0]
@@ -259,8 +274,7 @@ class Traffic_Control:
                         ex_rw = ex_fl_s.index(max_fl_s)
                     # get random sized aircraft
                     elif node_choice == 'random':
-                        ex_fl = random.choice([rw.runway_flights[-1] for rw in gp if rw.runway_flights[-1] != 0])
-                        ex_rw = [rw.runway_flights[-1] for rw in gp].index(ex_fl)
+                        ex_rw = self.rand_node_choice(gp)
                     # runway with aircrafts with least fuel_level
                     elif node_choice == 'fuel_level':
                         rw_fl = [sum([ac.fuel for ac in rw.runway_flights if ac!=0]) for rw in gp]
@@ -273,8 +287,17 @@ class Traffic_Control:
                                 rw.extra_spacing()
                         max_sp = max([rw.tot_ext_space for rw in gp])
                         ex_rw = [rw.tot_ext_space for rw in gp].index(max_sp)
+                    # get runway having aircraft that first arrives at the node or randomly select
+                    elif node_choice == 'first_arrival':
+                        fls=[rw.runway_flights[-1] for rw in gp if rw.runway_flights[-1]!=0]
+                        if len(fls) == 1:
+                            ex_fl = fls[0]
+                            ex_rw = [rw.runway_flights[-1] for rw in gp].index(ex_fl)
+                        else:
+                            ex_rw = self.rand_node_choice(gp)
                     else:
-                        raise Exception('node_rule choice is invalid or empty. Argument can be \'min\', \'max\', \'random\', \'fuel_level\' or \'health\'')
+                        raise Exception('node_rule choice is invalid or empty. Argument can be \'min\', \'max\', \'random\','
+                                        ' \'fuel_level\', \'health\' or \'first_arrival\'')
 
                     lv1[dx][ex_rw].exit_runway()
                     if l1out[dx] == 0:
@@ -283,48 +306,62 @@ class Traffic_Control:
 
             for gp in range(len(lvl1)):
                 lvl1[gp].mov_per_tstep()
-                ent = self.main_pool[-1]
-                lvl1[gp].entry_runway(ent)
+                # ensure no flight exits level 1 if movement probability of chosen runway is 0
+                if lvl1[gp].exit and not lvl1[gp].moved:
+                    l1out[lvl1[gp].runway_group-1] = 0
+                # condition and passing exception allows sim to keep running when there are no aircrafts in main_pool
+                if self.main_pool!=[]:
+                    ent = self.main_pool[-1]
+                    lvl1[gp].entry_runway(ent)
                 if lvl1[gp].ent:
                     try:
                         self.main_pool.pop(-1)
                     except IndexError:
-                        raise Exception('Aircrafts in main_pool is exhausted \nCreate sufficient with Traffic.create_pool()')
+                        pass
                 # change all exit checkers back to default
                 lvl1[gp].exit = False
 
             # lvl2
             # runway with least sized aircraft in last cell takes an exit
             if not all([rw.runway_flights[-1] == 0 for rw in lvl2]):
-                node_choice = random.choices([node_rule, 'random'], weights=[prob, 100 - prob],k=1)[0]
-                print(node_choice)
+                node_choice = random.choices([*node_rule, 'random'], weights=[*node_prob, 100 - sum(node_prob)],k=1)[0]
+                print('lvl2 node_choice ',node_choice)
+                # get least sized aircraft
                 if node_choice=='min':
-                    # get least sized aircraft
                     ex_fl_s = [rw.runway_flights[-1].size for rw in lvl2 if rw.runway_flights[-1] != 0]
                     min_fl_s = min(ex_fl_s)
                     ex_rw = ex_fl_s.index(min_fl_s)
+                # get max sized aircraft
                 elif node_choice=='max':
-                    # get max sized aircraft
                     ex_fl_s = [rw.runway_flights[-1].size for rw in lvl2 if rw.runway_flights[-1] != 0]
                     max_fl_s = max(ex_fl_s)
                     ex_rw = ex_fl_s.index(max_fl_s)
+                # get random sized aircraft
                 elif node_choice=='random':
-                    # get random sized aircraft
-                    ex_fl = random.choice([rw.runway_flights[-1] for rw in lvl2 if rw.runway_flights[-1] != 0])
-                    ex_rw = [rw.runway_flights[-1] for rw in lvl2].index(ex_fl)
+                    ex_rw = self.rand_node_choice(lvl2)
                 # runway with aircrafts with least fuel_level
                 elif node_choice == 'fuel_level':
                     rw_fl = [sum([ac.fuel for ac in rw.runway_flights if ac!=0]) for rw in lvl2]
                     min_fl = min(rw_fl)
                     ex_rw = rw_fl.index(min_fl)
+                # get most healthy runway
                 elif node_choice == 'health':
                     for l in self.levels:
                         for rw in l:
                             rw.extra_spacing()
                     max_sp = max([rw.tot_ext_space for rw in lvl2])
                     ex_rw = [rw.tot_ext_space for rw in lvl2].index(max_sp)
+                # runway having aircraft that first arrives at the node or randomly select
+                elif node_choice == 'first_arrival':
+                    fls = [rw.runway_flights[-1] for rw in lvl2 if rw.runway_flights[-1] != 0]
+                    if len(fls) == 1:
+                        ex_fl = fls[0]
+                        ex_rw = [rw.runway_flights[-1] for rw in lvl2].index(ex_fl)
+                    else:
+                        ex_rw = self.rand_node_choice(lvl2)
                 else:
-                    raise Exception('node_rule choice is invalid or empty. Argument can be \'min\', \'max\', \'random\', \'fuel_level\' or \'health\'')
+                    raise Exception('node_rule choice is invalid or empty. Argument can be \'min\', \'max\', \'random\', '
+                                    '\'fuel_level\', \'health\' or \'first_arrival\'')
                 lvl2[ex_rw].exit_runway()
                 if l2out == 0:
                     l2out = lvl2[ex_rw].exit_flight
@@ -332,6 +369,9 @@ class Traffic_Control:
 
             for rw in range(len(lvl2)):
                 lvl2[rw].mov_per_tstep()
+                # ensure no flight exits level 2 if movement probability of chosen runway is 0
+                if lvl2[rw].exit and not lvl2[rw].moved:
+                    l2out = 0
                 lvl2[rw].entry_runway(l1out[rw])
                 # change all exit checkers back to default
                 lvl2[rw].exit = False
@@ -342,9 +382,14 @@ class Traffic_Control:
             # exit from runway if any flight has to
             lvl3[0].exit_runway()
             l3out = lvl3[0].exit_flight
+
             if l3out != 0:
+                lvl3[0].exit = True
+            # adjust position of flights in runway after exit
+            lvl3[0].mov_per_tstep()
+            # ensure no flight exits level 3 to main_pool if movement probability of chosen runway is 0
+            if lvl3[0].exit and lvl3[0].moved:
                 try:
-                    lvl3[0].exit = True
                     # exit from last level goes to the main pool
                     print('main_pool replenished')
                     self.main_pool = [l3out] + self.main_pool
@@ -352,13 +397,14 @@ class Traffic_Control:
                     # random.shuffle([self.main_pool])
                 except AttributeError:
                     print('main_pool not created, create main_pool using object.create_pool command')
-                    # adjust position of flights in runway after exit
-            lvl3[0].mov_per_tstep()
+
             if l2out != 0:
                 lvl3[0].entry_runway(l2out)
-                lvl3[0].exit = False
             if lvl3[0].ent:
                 l2out = 0
+            # return exit checker to false
+            lvl3[0].exit = False
+
             trans_lvl = l1out + [l2out]
             tl = len([n for n in trans_lvl if n != 0])
 
@@ -375,6 +421,7 @@ class Traffic_Control:
             print('Total Flights ', total_op_flights(self.main_pool, lvl1, lvl2, lvl3, tl))
             print(f'Main Pool: {[ac.size for ac in self.main_pool]}')
             print(f'Aircrafts: {chng_list(lvl1)}\n{chng_list(lvl2)}\n{chng_list(lvl3)}\n')
+            print(lv1)
 
         # calc density of operational flights across all levels
         for l in self.levels:
@@ -382,12 +429,17 @@ class Traffic_Control:
                 rw.density(t_step)
         print('Final Main Pool:', [ac.size for ac in self.main_pool])
 
-    def converg_group(self, lvl1_strut):
-        lvl1 = self.create_rw_groups(lvl1_strut)
+    def rand_node_choice(self, group):
+        ex_fl = random.choice([rw.runway_flights[-1] for rw in group if rw.runway_flights[-1] != 0])
+        ex_rw = [rw.runway_flights[-1] for rw in group].index(ex_fl)
+        return ex_rw
 
-        lvl2_gps, lvl2 = self.create_oth_lvl(lvl1_strut)
+    def converg_group(self, lvl1_strut, ac_mov_prob):
+        lvl1 = self.create_rw_groups(lvl1_strut, ac_mov_prob)
 
-        lvl3_gps, lvl3 = self.create_oth_lvl(lvl2_gps)
+        lvl2_gps, lvl2 = self.create_oth_lvl(lvl1_strut, ac_mov_prob)
+
+        lvl3_gps, lvl3 = self.create_oth_lvl(lvl2_gps, ac_mov_prob)
 
         lvls_gps = [lvl1_strut, lvl2_gps, lvl3_gps]
         lvls = [lvl1, lvl2, lvl3]
@@ -398,22 +450,22 @@ class Traffic_Control:
                 rw.lvl = dx
         return lvl1, lvl2, lvl3
 
-    def create_oth_lvl(self, group_strut):
+    def create_oth_lvl(self, group_strut, ac_mov_prob):
         no_group = len(group_strut)
         if any([len(gp) != 1 for gp in group_strut]):
             lvl_gps = [[sum(gp) // len(gp)] for gp in group_strut]
         else:
             lvl_gps = [[sum([nc for gp in group_strut for nc in gp]) // no_group]]
-        lvl = self.create_rw_groups(lvl_gps)
+        lvl = self.create_rw_groups(lvl_gps, ac_mov_prob)
         return lvl_gps, lvl
 
-    def create_rw_groups(self, group_strut, run_way=Runway):
+    def create_rw_groups(self, group_strut, mov_prob=100, run_way=Runway):
         lvl = []
         for gdx, group in enumerate(group_strut, 1):
             for rw in group:
                 if isinstance(rw, float):
                     break
-                lvl += [run_way(rw, gdx)]
+                lvl += [run_way(rw, gdx, mov_prob)]
         return lvl
 
     def total_op_flights(self):
@@ -453,7 +505,16 @@ class Traffic_Control:
         for l in section:
             for rw in l:
                 sec_flow += rw.tot_mov
+        sec_flow = sec_flow/self.t_step
         return sec_flow
+
+    def cell1_section_flow(self,section):
+        c_sec_flow = 0
+        for l in section:
+            for rw in l:
+                c_sec_flow += rw.cell1_mov
+        c_sec_flow = c_sec_flow/self.t_step
+        return c_sec_flow
 
     def landing_rate(self):
         landings=len(self.landing)
@@ -501,12 +562,11 @@ def chng_list(raw_list):
 def simulate(runways):
     pass
 
-
 '''
 Traffic_Control class represents experiment enviroment
 #1 Create Traffic_Control object e.g tf=Traffic_Control()
 
-#2 Setup group of runways by instantiating method add.runway
+#2 Setup group of runways by instantiating method add_runway
 e.g tf.add_runway([[20,40,30,10],[30,50],[45]]) means
 [20,40,30,10] is a group of runways with 20,40,30 & 10 steps, [30,45] is another group.
 Note that no. of steps in any level2 runway is average of all the steps in corresponding level1 runway group
@@ -516,15 +576,21 @@ Set distribution of aircraft sizes in pool using size_dist argument e.g size_dis
 40 size_1, 50 size_2, 45 size_3 & 65 size_4 aircrafts
 
 #4 Run simulation with runway_per_tstep method.
-node_rule parameter takes string argument 'min','max','random','fuel_level' or 'health'
-prob argument is probability that chosen node_rule will be used over 'random' with 100 being max probability variable
-hint: prob can be set to 100 to force chosen node_rule to be used
+i) node_rule parameter takes list of string argument 'min','max','random','fuel_level', 'health' and/or first_arrival
+ii) node_prob argument is probability that chosen node_rule(s) will be used over 'random' with 100 being max probability variable
+hint: node_prob can be set to 100 to force a singular chosen node_rule to be used
+warning: total probability for chosen node_rules cannot exceed 100
+iii) mov_prob parameter takes integer argument of up to 100 (signifying 100%) and is the probability of an aircraft moving
+from one cell to another. Note that given mov_prob argument applies for all runways in the experiment.
+examples:
+tf.runway_per_tstep([t_step=200, node_rule=['health','min','first_arrival'], node_prob=[20,15,40], mov_prob=40)
+tf.runway_per_tstep([t_step=200, node_rule=['max','min','fuel_level'], node_prob=[40,30,30], mov_prob=40)
 
 #5 Calc density of sections with object.section_density method
 section_density method takes 2 arguments:
 i) section- a list of all levels or runways that constitute user desired section
 ii) type_choice- a string argument 'original' or 'modified', defaults to 'original'.
-Note that list of runways on each level has been flatened for user to l1,l2,l3
+Note that list of runways on each level has been flattened for user to l1,l2,l3
 Note also that all entries must be a list of lists
 examples:
 tf.section_density([tf.l1],'modified')
@@ -539,9 +605,15 @@ tf.section_flow([tf.l1])
 tf.section_flow([[tf.l1[2]],tf.l2,tf.l3])
 tf.section_flow([tf.l1[0:2],tf.l2,tf.l3])
 
-#7 Calc landing rate with function object.landing_rate()
+#7 Calc flow from first cells with object.cell1_section_flow method.
+examples:
+tf.cell1_section_flow([tf.l1])
+tf.cell1_section_flow([tf.l1[0:2],tf.l2,tf.l3])
+
+#8 Calc landing rate with function object.landing_rate()
 e.g tf.landing_rate()
 '''
+
 
 if __name__ == '__main__':
     # start time
@@ -550,7 +622,7 @@ if __name__ == '__main__':
     tf = Traffic_Control()
     tf.add_runway([[20, 40, 30, 10], [30, 50], [20, 15, 25], [45]])
     tf.create_pool(size_dist=[40, 50, 45, 65])
-    tf.runway_per_tstep(t_step=200, node_rule='health', prob=30)
+    tf.runway_per_tstep(t_step=500, node_rule=['health', 'min', 'first_arrival'], node_prob=[30,10,40], mov_prob=40)
 
     # end time
     et = time.process_time()

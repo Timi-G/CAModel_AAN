@@ -4,7 +4,7 @@ import random
 from matplotlib import pyplot as plt
 import numpy as np
 
-import cam_airnavconfrules as ccf
+from cam_air_nav import cam_airnavconfrules as ccf
 
 '''Object Classes'''
 # dept:departure, dest:destination, size:object_size_class
@@ -220,7 +220,7 @@ def vel_per_t(ps,flights,t_steps):
     res_mov(ps,flights)
     for p in ps:
         p.avg_vel=sum(p.agg_vel)/t_steps
-    # velocity = [nf / len(flights) for nf in no_fl]
+    # velocity = [nf / len(flights) for nf in no_fl] to use/update velocity definition as required
 
 
 '''Plots'''
