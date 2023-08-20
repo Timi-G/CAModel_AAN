@@ -89,6 +89,7 @@ class Field:
         self.av_dist = []
         self.sim_av_dist = []
         self.velocity = []
+        self.coord = []
 
 # class to instantiate aircraft
 class Flight(Air_Object):
@@ -287,75 +288,66 @@ def split_num(num):
     sn = [fir, sec]
     return sn
 
-def inst_flights(num_flights,dpx,dpy,dest,size):
-    # arrange data placement in rand function
-    if dpx < 1:
-        dpx=[dpx,0]
-    else:
-        dpx=[0,dpx]
-
-    if dpy < 0:
-        dpy=[dpy,0]
-    else:
-        dpy=[0,dpy]
-
-    flights=[Flight(dept=[random.randint(*dpx),random.randint(*dpy)],dest=dest,size=size)
+# coord is the coordinates used to randomly set aircraft departure
+def inst_flights(num_flights,coord,dest,size):
+    flights=[Flight(dept=[random.randint(*coord[0]),random.randint(*coord[1])],dest=dest,size=size)
              for _ in range(1,num_flights+1) if num_flights >= 1]
     return flights
 
 # func for creating flights by subdir
-def _nw_dep_flights(nw,nwd,dest,size):
-    fl=inst_flights(nw, -nwd, nwd, dest, size)
+def _n_dep_flights(num_flights,coord,dest,size):
+    fl=inst_flights(num_flights, coord, dest, size)
     return fl
 
-def _ne_dep_flights(ne,ned,dest,size):
-    fl=inst_flights(ne, ned, ned, dest, size)
+def _s_dep_flights(num_flights,coord,dest,size):
+    fl=inst_flights(num_flights, coord, dest, size)
     return fl
 
-def _sw_dep_flights(sw,swd,dest,size):
-    fl=inst_flights(sw, -swd, -swd, dest, size)
+def _e_dep_flights(num_flights, coord, dest, size):
+    fl=inst_flights(num_flights, coord, dest, size)
     return fl
 
-def _se_dep_flights(se,sed,dest,size):
-    fl=inst_flights(se, sed, -sed, dest, size)
+def _w_dep_flights(num_flights, coord, dest, size):
+    fl=inst_flights(num_flights, coord, dest, size)
     return fl
+
+# tma_sect is a list complete coord of 'x' or 'y' axis that spread will be applied to
+def get_spread_range(spread,tma_sect):
+    full_spread_range=tma_sect[1]-tma_sect[0]
+    if spread==0:
+        spread_range=0
+    else:
+        spread_range=full_spread_range//(4/spread)
+    return spread_range
 
 # func to create flights
-def create_flights(north,south,east,west,dest,size,spread,aspace):
-    global gnum_sdf
+def create_flights(north,south,east,west,tma_coord,dest,size,spread):
+    all_flights=[north,south,east,west]
+    n,s,e,w=0,0,0,0
 
-    num_sdf=[north,south,east,west]
-    gnum_sdf = [a + b for a, b in zip(num_sdf, gnum_sdf)]
+    # north & south
+    ns_spr_range = get_spread_range(spread, tma_coord[1])
+    if all_flights[0] != 0:
+        n_coords = [tma_coord[0],[tma_coord[1][1]-ns_spr_range,tma_coord[1][1]]]
+        n=_n_dep_flights(north,n_coords,dest,size)
 
-    spn = split_num(north)
-    if spread==1:
-        ospn = [aspace,aspace]
-    else:
-        ospn = split_num(gnum_sdf[0])
-    n=_nw_dep_flights(spn[0],ospn[0]*spread,dest,size) + _ne_dep_flights(spn[1],ospn[1]*spread,dest,size)
+    if all_flights[1] != 0:
+        s_coords=[tma_coord[0],[tma_coord[1][0],tma_coord[1][0]+ns_spr_range]]
+        s=_s_dep_flights(south,s_coords,dest,size)
 
-    sps = split_num(south)
-    if spread==1:
-        osps = [aspace,aspace]
-    else:
-        osps = split_num(gnum_sdf[1])
-    s=_se_dep_flights(sps[0],osps[0]*spread,dest,size) + _sw_dep_flights(sps[1],osps[1]*spread,dest,size)
+    # east & west
+    ew_spr_range = get_spread_range(spread, tma_coord[0])
+    if all_flights[2] != 0:
+        e_coords = [[tma_coord[0][0],tma_coord[0][0]+ew_spr_range],tma_coord[1]]
+        e = _e_dep_flights(east, e_coords, dest, size)
 
-    spe = split_num(east)
-    if spread==1:
-        ospe = [aspace,aspace]
-    else:
-        ospe = split_num(gnum_sdf[2])
-    e=_ne_dep_flights(spe[0],(ospn[1]+ospe[0])*spread,dest,size) + _se_dep_flights(spe[1],(osps[0]+ospe[1])*spread,dest,size)
+    if all_flights[3] != 0:
+        w_coords = [[tma_coord[0][0]-ew_spr_range,tma_coord[0][1]], tma_coord[1]]
+        w = _w_dep_flights(west, w_coords, dest, size)
 
-    spw = split_num(west)
-    if spread==1:
-        ospw = [aspace,aspace]
-    else:
-        ospw = split_num(gnum_sdf[3])
-    w=_nw_dep_flights(spw[0],(ospn[0]+ospw[0])*spread,dest,size) + _sw_dep_flights(spw[1],(osps[1]+ospw[1])*spread,dest,size)
-
-    flights = n + s + e + w
+    flights_raw = [n,s,e,w]
+    flights = [fl for fl in flights_raw if fl != 0]
+    flights = [f for fl in flights for f in fl]
     return flights
 
 
@@ -378,7 +370,6 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,total_tstep):
 
     if total_tstep>1:
         for t in range(total_tstep):
-            print('flights_pos:', flights_pos)
             for flight in flights:
                 ccf.conf_flight_movement(flights, flight, obp)
                 flight.collect_pos()
@@ -398,7 +389,6 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,total_tstep):
 
     elif total_tstep==1:
         while True:
-            print('flights_pos:', flights_pos)
             for flight in flights:
                 ccf.conf_flight_movement(flights,flight,obp)
                 flight.collect_pos()

@@ -67,7 +67,6 @@ class Aircraft(Obj_Field):
 
 
 class Obstruction(Oth_Obj_Field):
-
     def __init__(self,**kwargs):
         super(Obstruction, self).__init__(**kwargs)
         # implement obstructions to have repulsive forces
@@ -77,7 +76,6 @@ class Stat_Obstruction(Obstruction):
     pass
 
 class Mov_Obstruction(Obstruction):
-
     def __init__(self,travel_rate,**kwargs):
         super(Mov_Obstruction, self).__init__(**kwargs)
         self.trav_rate=travel_rate
@@ -552,6 +550,7 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,total_tste
 
     # av_distn(tma,flights) average distance func needs update
     vel_per_t(tma[0],flights)
+
 
 def simulate(flights,waypoints,stat_obstructions,mov_obstructions,tma,total_tstep=1):
 

@@ -21,18 +21,19 @@ get average transit time with f1.avg_transit_time(), f2.avg_transit_time()...
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     tma = TMA()
+    tma.coord = [[-5,50],[-10,50]]
 
     dest = [5,5]
-    f1 = Flight(dept=[-7,3], dest=dest, size=2)
-    f2 = Flight(dept=[14,3], dest=dest, size=1)
-    f3 = Flight(dept=[12,0], dest=[3,8], size=3)
-    f4 = Flight(dept=[13,9], dest=dest, size=1)
-    f5 = Flight(dept=[5,5], dest=[10,3], size=2)
-    f6 = Flight(dept=[1,1], dest=[15,2], size=1)
+    # f1 = Flight(dept=[-7,3], dest=dest, size=2)
+    # f2 = Flight(dept=[14,3], dest=dest, size=1)
+    # f3 = Flight(dept=[12,0], dest=[3,8], size=3)
+    # f4 = Flight(dept=[13,9], dest=dest, size=1)
+    # f5 = Flight(dept=[5,5], dest=[10,3], size=2)
+    # f6 = Flight(dept=[1,1], dest=[15,2], size=1)
 
-    fr1 = create_flights(north=1, south=3, east=2, west=0, dest=[5, 1], size=1, spread=1,aspace=50)
-    fr2 = create_flights(north=1, south=0, east=5, west=4, dest=[7, 15], size=2, spread=1,aspace=50)
-    fr3 = create_flights(north=2, south=3, east=0, west=5, dest=[17, 20], size=1, spread=1,aspace=50)
+    fr1 = create_flights(north=5, south=9, east=7, west=10, tma_coord=tma.coord, dest=[5, 1], size=1, spread=0)
+    # fr2 = create_flights(north=1, south=0, east=5, west=4, dest=[7, 15], size=2, spread=1,aspace=50)
+    # fr3 = create_flights(north=2, south=3, east=0, west=5, dest=[17, 20], size=1, spread=1,aspace=50)
 
     w1 = Waypoint(pos=[-13,4], size=1)
     w2 = Waypoint(pos=[10,20], size=1)
@@ -46,8 +47,8 @@ if __name__ == '__main__':
     p1 = Point(pos=[6,2], size=2)
     p2 = Point(pos=[10,5], size=3)
 
-    flights = fr1+fr2+fr3+[f1,f2,f3,f4,f5]
-    waypoints = [w2]
+    flights = fr1 #+fr2+fr3+[f1,f2,f3,f4,f5]
+    waypoints = [w1,w2,w2]
     obstructions = [ob1,ob2,ob3,ob4]
     points = [p1,p2]
 
