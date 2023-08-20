@@ -32,8 +32,8 @@ if __name__ == '__main__':
     f6 = Flight(dept=[1,1], dest=[15,2], size=1)
 
     fr1 = create_flights(north=5, south=9, east=7, west=10, tma_coord=tma.coord, dest=[5, 1], size=1, spread=0)
-    fr2 = create_flights(north=1, south=0, east=5, west=4, dest=[7, 15], size=2, spread=1)
-    fr3 = create_flights(north=2, south=3, east=0, west=5, dest=[17, 20], size=1, spread=2)
+    fr2 = create_flights(north=1, south=0, east=5, west=4, tma_coord=tma.coord, dest=[7, 15], size=2, spread=1)
+    fr3 = create_flights(north=2, south=3, east=0, west=5, tma_coord=tma.coord, dest=[17, 20], size=1, spread=2)
 
     w1 = Waypoint(pos=[-13,4], size=1)
     w2 = Waypoint(pos=[10,20], size=1)
