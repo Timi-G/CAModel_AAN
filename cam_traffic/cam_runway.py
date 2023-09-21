@@ -52,7 +52,6 @@ class Runway:
                 return
             for n in range(-1, -len(rw_fl), -1):
                 self.runway_flights[n] = rw_fl[n - 1]
-                # print('first:',self.runway_flights[n],' second',rw_fl[n-1])
             self.runway_flights[0] = 0
             # calc no of aircraft that successfully move
             self.tot_mov += 1
@@ -85,7 +84,6 @@ class Runway:
                 elif dx > spacing:
                     self.ent = True
                     self.runway_flights[0] = flight
-                    # self.runway_flights[dx-(spacing+1)]=flight
                     # runway first cell gets occupied whenever there is an entry
                     self.cell1_mov += 1
                     return
@@ -172,7 +170,6 @@ class Traffic_Control:
 
     def test_runway(self):
         run = Runway(no_cells=50, runway_group=2)
-        print(f'Initial Main Pool {len(self.main_pool)}:', self.main_pool)
         self.ipool = [r for r in self.main_pool]
 
         for t in range(100):
@@ -181,7 +178,6 @@ class Traffic_Control:
             run.exit = True
             if run.exit and run.exit_flight != 0:
                 self.main_pool = [run.exit_flight] + self.main_pool
-                print(f'Main Pool {len(self.main_pool)}: ', self.main_pool)
 
             # flights move forward in runway
             run.mov_per_tstep()
@@ -192,10 +188,7 @@ class Traffic_Control:
             # if runway rejects flight entry, return aircraft to pool
             if not run.ent:
                 self.main_pool.insert(-1, ent)
-            print(run.runway_flights)
             run.exit = False
-            # random.shuffle(self.main_pool)
-        print(f'Final Main Pool {len(self.main_pool)}:', self.main_pool)
 
     # change a level config. from groups in a list to list of lists
     def part_lvl(self, lvl):
@@ -213,7 +206,6 @@ class Traffic_Control:
                 lv += [rnway]
             else:
                 lv += [[lvl[-1]]]
-        print('lv', lv)
         return lv
 
     def part_lvl_a(self, lvl):
@@ -231,7 +223,6 @@ class Traffic_Control:
                 lv += [rnway]
             else:
                 lv += [[lvl[-1].runway_flights]]
-        print(lv)
         return lv
 
     def runway_per_tstep(self, t_step, node_prob, mov_prob, node_rule=None):
@@ -250,9 +241,6 @@ class Traffic_Control:
 
         l2out = 0
         l1out = [0] * len(lv1)
-        print('Initial Main Pool:', self.main_pool)
-        print(
-            f'Aircrafts In Initial Runway: {[rw.runway_flights for rw in lvl1]}\n{[rw.runway_flights for rw in lvl2]}\n{[rw.runway_flights for rw in lvl3]}')
 
         self.ipool = [r for r in self.main_pool]
         for t in range(t_step):
@@ -261,7 +249,6 @@ class Traffic_Control:
             for dx, gp in enumerate(lv1):
                 if not all([rw.runway_flights[-1] == 0 for rw in gp]):
                     node_choice = random.choices([*node_rule, 'random'], weights=[*node_prob, 100 - sum(node_prob)],k=1)[0]
-                    print(f'lvl_1 group_{dx+1} node_choice ', node_choice)
                     # get min sized aircraft
                     if node_choice == 'min':
                         ex_fl_s = [rw.runway_flights[-1].size for rw in gp if rw.runway_flights[-1] != 0]
@@ -325,7 +312,6 @@ class Traffic_Control:
             # runway with least sized aircraft in last cell takes an exit
             if not all([rw.runway_flights[-1] == 0 for rw in lvl2]):
                 node_choice = random.choices([*node_rule, 'random'], weights=[*node_prob, 100 - sum(node_prob)],k=1)[0]
-                print('lvl2 node_choice ',node_choice)
                 # get least sized aircraft
                 if node_choice=='min':
                     ex_fl_s = [rw.runway_flights[-1].size for rw in lvl2 if rw.runway_flights[-1] != 0]
@@ -391,7 +377,6 @@ class Traffic_Control:
             if lvl3[0].exit and lvl3[0].moved:
                 try:
                     # exit from last level goes to the main pool
-                    print('main_pool replenished')
                     self.main_pool = [l3out] + self.main_pool
                     self.landing+=[l3out]
                     # random.shuffle([self.main_pool])
@@ -417,17 +402,15 @@ class Traffic_Control:
                         if ac != 0:
                             ac.fuel_depl()
 
-            print('Main Pool No. ', len(self.main_pool))
-            print('Total Flights ', total_op_flights(self.main_pool, lvl1, lvl2, lvl3, tl))
-            print(f'Main Pool: {[ac.size for ac in self.main_pool]}')
-            print(f'Aircrafts: {chng_list(lvl1)}\n{chng_list(lvl2)}\n{chng_list(lvl3)}\n')
-            print(lv1)
+            # print('Main Pool No. ', len(self.main_pool))
+            # print('Total Flights ', total_op_flights(self.main_pool, lvl1, lvl2, lvl3, tl))
+            # print(f'Main Pool: {[ac.size for ac in self.main_pool]}')
+            # print(f'Aircrafts: {chng_list(lvl1)}\n{chng_list(lvl2)}\n{chng_list(lvl3)}\n')
 
         # calc density of operational flights across all levels
         for l in self.levels:
             for rw in l:
                 rw.density(t_step)
-        print('Final Main Pool:', [ac.size for ac in self.main_pool])
 
     def rand_node_choice(self, group):
         ex_fl = random.choice([rw.runway_flights[-1] for rw in group if rw.runway_flights[-1] != 0])

@@ -36,15 +36,16 @@ class Air_Object:
         if self.agg_pos[-3:-1] != self.dest:
             self.t_step += 1
 
+    def coll_sim_agg_pos(self):
+        # convert agg_pos to horizontal list for better result display
+        self.sim_agg_pos=ccf.conv_to_2d(self.agg_pos,2)
+
 # the object path as a 2D array
     def flight_path(self):
         fp = np.array(self.agg_pos)
         nfp = fp.reshape(-1,2)
         self.fp = nfp.T
 
-        # convert numpy to horizontal list for better result display
-        ntl= fp.tolist()
-        self.agg_pos=ccf.conv_to_2d(ntl,2)
 
 # to calculate & collect distance of obj pos to dest
     def collect_distn(self):
@@ -52,7 +53,7 @@ class Air_Object:
         self.agg_distn+=[self.distn]
 
     def avg_transit_time(self):
-        self.avg_tnstime = avg_trans_time(self.agg_pos,self.dest)
+        self.avg_tnstime = avg_trans_time(self.sim_agg_pos,self.dest)
 
 # class for other objects and points in the air during flight
 class Free_Air_Object:
@@ -150,7 +151,7 @@ def res_mov(ps,flights):
         for fl in flights:
             # container for res_mov(displacement) per t_step for flight at p
             mod_path = []
-            fp=fl.agg_pos
+            fp=fl.sim_agg_pos
             pc=p.con_rad
             for n in range(len(fp)):
                 try:
@@ -176,19 +177,19 @@ def res_mov(ps,flights):
         p.agg_vel=list(map(sum,p.ob_mov))
 
 # calc avg transit time
-def avg_trans_time(agg_pos,des):
+def avg_trans_time(sim_agg_pos,des):
     no_journ=0
 
     if isinstance(des[0],list):
         for d in des:
-            no_journ += agg_pos.count(d)
+            no_journ += sim_agg_pos.count(d)
     else:
-        no_journ = agg_pos.count(des)
+        no_journ = sim_agg_pos.count(des)
 
     t = 0
     ts = []
 
-    for f in agg_pos:
+    for f in sim_agg_pos:
         t += 1
         if f == des or f in des:
             ts += [t]
@@ -265,9 +266,7 @@ def disp_wp_dens(waypoints):
 # to display average distance of flights for each time step
 def disp_av_distance(tma):
     savd = tma.av_dist
-
     avd = [['time step:', t, 'average distance=', a] for (a, t) in zip(savd, range(len(savd)))]
-
     print(avd)
 
 # to display all results
@@ -289,26 +288,33 @@ def split_num(num):
     return sn
 
 # coord is the coordinates used to randomly set aircraft departure
-def inst_flights(num_flights,coord,dest,size):
-    flights=[Flight(dept=[random.randint(*coord[0]),random.randint(*coord[1])],dest=dest,size=size)
+# i) ga parameter takes 'None' arg or a list arg [[x1,y1],[x2,y2],[x3,y3]...]
+# ii) dependent on if func is being used in the Genetic Algorithm Experiment (ga_airnav.py) or not
+def inst_flights(num_flights,coord,dest,size,ga=None):
+    if ga:
+        flights = []
+        for a_dep in ga:
+            flights += [Flight(dept=a_dep, dest=dest, size=size)]
+    else:
+        flights=[Flight(dept=[random.randint(*coord[0]), random.randint(*coord[1])], dest=dest, size=size)
              for _ in range(1,num_flights+1) if num_flights >= 1]
     return flights
 
 # func for creating flights by subdir
-def _n_dep_flights(num_flights,coord,dest,size):
-    fl=inst_flights(num_flights, coord, dest, size)
+def _n_dep_flights(num_flights,coord,dest,size,ga):
+    fl=inst_flights(num_flights, coord, dest, size,ga)
     return fl
 
-def _s_dep_flights(num_flights,coord,dest,size):
-    fl=inst_flights(num_flights, coord, dest, size)
+def _s_dep_flights(num_flights,coord,dest,size,ga):
+    fl=inst_flights(num_flights, coord, dest, size,ga)
     return fl
 
-def _e_dep_flights(num_flights, coord, dest, size):
-    fl=inst_flights(num_flights, coord, dest, size)
+def _e_dep_flights(num_flights, coord, dest, size,ga):
+    fl=inst_flights(num_flights, coord, dest, size,ga)
     return fl
 
-def _w_dep_flights(num_flights, coord, dest, size):
-    fl=inst_flights(num_flights, coord, dest, size)
+def _w_dep_flights(num_flights, coord, dest, size,ga):
+    fl=inst_flights(num_flights, coord, dest, size,ga)
     return fl
 
 # tma_sect is a list complete coord of 'x' or 'y' axis that spread will be applied to
@@ -321,7 +327,7 @@ def get_spread_range(spread,tma_sect):
     return spread_range
 
 # func to create flights
-def create_flights(north,south,east,west,tma_coord,dest,size,spread):
+def create_flights(north,south,east,west,tma_coord,dest,size,spread,ga=None):
     all_flights=[north,south,east,west]
     n,s,e,w=0,0,0,0
 
@@ -329,21 +335,21 @@ def create_flights(north,south,east,west,tma_coord,dest,size,spread):
     ns_spr_range = get_spread_range(spread, tma_coord[1])
     if all_flights[0] != 0:
         n_coords = [tma_coord[0],[tma_coord[1][1]-ns_spr_range,tma_coord[1][1]]]
-        n=_n_dep_flights(north,n_coords,dest,size)
+        n = _n_dep_flights(north,n_coords,dest,size,ga)
 
     if all_flights[1] != 0:
-        s_coords=[tma_coord[0],[tma_coord[1][0],tma_coord[1][0]+ns_spr_range]]
-        s=_s_dep_flights(south,s_coords,dest,size)
+        s_coords = [tma_coord[0],[tma_coord[1][0],tma_coord[1][0]+ns_spr_range]]
+        s = _s_dep_flights(south,s_coords,dest,size,ga)
 
     # east & west
     ew_spr_range = get_spread_range(spread, tma_coord[0])
     if all_flights[2] != 0:
         e_coords = [[tma_coord[0][0],tma_coord[0][0]+ew_spr_range],tma_coord[1]]
-        e = _e_dep_flights(east, e_coords, dest, size)
+        e = _e_dep_flights(east, e_coords, dest, size, ga)
 
     if all_flights[3] != 0:
         w_coords = [[tma_coord[0][0]-ew_spr_range,tma_coord[0][1]], tma_coord[1]]
-        w = _w_dep_flights(west, w_coords, dest, size)
+        w = _w_dep_flights(west, w_coords, dest, size, ga)
 
     flights_raw = [n,s,e,w]
     flights = [fl for fl in flights_raw if fl != 0]
@@ -371,7 +377,7 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,total_tstep):
     if total_tstep>1:
         for t in range(total_tstep):
             for flight in flights:
-                ccf.conf_flight_movement(flights, flight, obp)
+                ccf.conf_flight_movement(flights, flight, obp, 1)
                 flight.collect_pos()
                 flight.collect_distn()
 
@@ -390,7 +396,7 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,total_tstep):
     elif total_tstep==1:
         while True:
             for flight in flights:
-                ccf.conf_flight_movement(flights,flight,obp)
+                ccf.conf_flight_movement(flights,flight,obp, 1)
                 flight.collect_pos()
                 flight.collect_distn()
 
@@ -410,8 +416,11 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,total_tstep):
     obs_plots(obp)
     plt.show()
 
+    # resolve sim_agg_pos for flights &
     # get average transit time of flights
     for f in flights:
+        f.coll_sim_agg_pos()
+        print(f.sim_agg_pos)
         f.avg_transit_time()
     av_distn(tma,flights)
     vel_per_t(points,flights,total_tstep)

@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from cam_air_nav.cam_airnav_mod import Air_Object, Free_Air_Object, avg_trans_time, col_dept, path_plots
-from cam_air_nav.cam_airnavconfrules import obj_radius
+from cam_air_nav.cam_airnavconfrules import obj_radius, conv_to_2d
 
 
 '''Object Field Classes'''
@@ -63,6 +63,7 @@ class Aircraft(Obj_Field):
             for n in range(len(self.fp[0])):
                 self.fp[m,n]=self.fp[m,n]-1
 
+        self.agg_pos=conv_to_2d(self.agg_pos,2)
         self.agg_pos=[[m[1],m[0]] for m in self.agg_pos]
 
 

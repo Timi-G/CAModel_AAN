@@ -47,4 +47,4 @@ if __name__ == '__main__':
     mov_obstructions = [mob1]
 
 
-    simulate(flights,waypoints,stat_obstructions,mov_obstructions,field,total_tstep=100)
+    simulate(flights,waypoints,stat_obstructions,mov_obstructions,field,total_tstep=25)

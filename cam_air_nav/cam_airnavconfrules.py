@@ -106,7 +106,7 @@ def NN(pos):
     pos[1] = pos[1] + 1
 
 # flight movement in conflict and non-conflict
-def conf_flight_movement(flights,fl,obs_pos):
+def conf_flight_movement(flights,fl,obs_pos,des_conf_r):
     fls=[f for f in flights if f != fl]
 
     # one step destination of flight
@@ -118,7 +118,7 @@ def conf_flight_movement(flights,fl,obs_pos):
     des=fl.dest
 
     # define conflict radius around destination
-    con_des=obj_radius(1,des)
+    con_des=obj_radius(des_conf_r,des)
 
     if pos == des:
         return
@@ -155,7 +155,11 @@ def conf_flight_movement(flights,fl,obs_pos):
             return
         # Hover (for conflict around destination)
         if pos in con_des:
-            hov_fli += 1
+            if des_conf_r==0:
+                pos[0],pos[1]=des
+                hov_fli += 1
+            else:
+                hov_fli += 1
             return
         # SE
         if [pos[0] + 1, pos[1] - 1] not in con_rad:
@@ -192,7 +196,11 @@ def conf_flight_movement(flights,fl,obs_pos):
             return
         # Hover (for conflict around destination)
         if pos in con_des:
-            hov_fli += 1
+            if des_conf_r==0:
+                pos[0],pos[1]=des
+                hov_fli += 1
+            else:
+                hov_fli += 1
             return
         # SS
         if [pos[0], pos[1] - 1] not in con_rad:
@@ -237,7 +245,11 @@ def conf_flight_movement(flights,fl,obs_pos):
             return
         # Hover (for conflict around destination)
         if pos in con_des:
-            hov_fli += 1
+            if des_conf_r==0:
+                pos[0],pos[1]=des
+                hov_fli += 1
+            else:
+                hov_fli += 1
             return
         # NE
         if [pos[0] + 1, pos[1] + 1] not in con_rad:
@@ -274,7 +286,11 @@ def conf_flight_movement(flights,fl,obs_pos):
             return
         # Hover (for conflict around destination)
         if pos in con_des:
-            hov_fli += 1
+            if des_conf_r==0:
+                pos[0],pos[1]=des
+                hov_fli += 1
+            else:
+                hov_fli += 1
             return
         # WW
         if [pos[0] - 1, pos[1]] not in con_rad:
@@ -319,7 +335,11 @@ def conf_flight_movement(flights,fl,obs_pos):
             return
         # Hover (for conflict around destination)
         if pos in con_des:
-            hov_fli += 1
+            if des_conf_r==0:
+                pos[0],pos[1]=des
+                hov_fli += 1
+            else:
+                hov_fli += 1
             return
         # NW
         if [pos[0] - 1, pos[1] + 1] not in con_rad:
@@ -356,7 +376,11 @@ def conf_flight_movement(flights,fl,obs_pos):
             return
         # Hover (for conflict around destination)
         if pos in con_des:
-            hov_fli += 1
+            if des_conf_r == 0:
+                pos[0],pos[1] = des
+                hov_fli += 1
+            else:
+                hov_fli += 1
             return
         # SS
         if [pos[0], pos[1] - 1] not in con_rad:
@@ -401,7 +425,11 @@ def conf_flight_movement(flights,fl,obs_pos):
             return
         # Hover (for conflict around destination)
         if pos in con_des:
-            hov_fli += 1
+            if des_conf_r == 0:
+                pos[0],pos[1] = des
+                hov_fli += 1
+            else:
+                hov_fli += 1
             return
         # SW
         if [pos[0] - 1, pos[1] - 1] not in con_rad:
@@ -436,7 +464,11 @@ def conf_flight_movement(flights,fl,obs_pos):
             return
         # Hover (for conflict around destination)
         if pos in con_des:
-            hov_fli += 1
+            if des_conf_r==0:
+                pos[0],pos[1] = des
+                hov_fli += 1
+            else:
+                hov_fli += 1
             return
         # EE
         if [pos[0] + 1, pos[1]] not in con_rad:

@@ -47,13 +47,13 @@ if __name__ == '__main__':
     p1 = Point(pos=[6,2], size=2)
     p2 = Point(pos=[10,5], size=3)
 
-    flights = fr1 +fr2+fr3+[f1,f2,f3,f4,f5]
+    flights = fr1 #+fr2+fr3+[f1,f2,f3,f4,f5]
     waypoints = [w1,w2,w2]
     obstructions = [ob1,ob2,ob3,ob4]
     points = [p1,p2]
 
 
 # to run simulation
-    simulate(tma,flights,waypoints,obstructions,points,total_tsteps=100)
+    simulate(tma,flights,waypoints,obstructions,points,total_tsteps=10)
 
     display_results(tma,flights,waypoints)
