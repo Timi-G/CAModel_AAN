@@ -255,13 +255,11 @@ def res_field(grid_size,pos,max_pot):
         for m in bg_grid:
             grid+=[m[-pos[0]-size:]]
         grid=grid[size-pos[1]+1:size-pos[1]+1+grid_size[1]]
-            # grid=bg_grid[-pos[0]-1-size:-1][size-pos[1]:size-pos[1]+grid_size[1]]
     # longest potential reduc. is u-d_end
     elif size==len_lst[1]:
         for m in bg_grid:
             grid+=[m[size-pos[0]+1:size-pos[0]+1+grid_size[0]]]
         grid=grid[-pos[1]-size:]
-        # grid=bg_grid[size-pos[0]:size-pos[0]+grid_size[0]][-pos[1]-size:]
     # longest potential reduc. is l_start-r
     elif size == len_lst[2]:
         for m in bg_grid:
@@ -373,7 +371,6 @@ def conf_resl(field,flights,flight):
 
     npi = nxt_pos(rf,fp)
 
-    # rf[pos[0]][pos[1] + 1] == pt + 1 former concept
     # no movement
     if npi==0:
         flight.pot = rf[fp[1]][fp[0]]
