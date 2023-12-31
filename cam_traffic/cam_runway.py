@@ -402,11 +402,6 @@ class Traffic_Control:
                         if ac != 0:
                             ac.fuel_depl()
 
-            # print('Main Pool No. ', len(self.main_pool))
-            # print('Total Flights ', total_op_flights(self.main_pool, lvl1, lvl2, lvl3, tl))
-            # print(f'Main Pool: {[ac.size for ac in self.main_pool]}')
-            # print(f'Aircrafts: {chng_list(lvl1)}\n{chng_list(lvl2)}\n{chng_list(lvl3)}\n')
-
         # calc density of operational flights across all levels
         for l in self.levels:
             for rw in l:
@@ -542,9 +537,6 @@ def chng_list(raw_list):
     return fin_list
 
 
-def simulate(runways):
-    pass
-
 '''
 Traffic_Control class represents experiment enviroment
 #1 Create Traffic_Control object e.g tf=Traffic_Control()
@@ -611,5 +603,3 @@ if __name__ == '__main__':
     et = time.process_time()
     # execution time
     exc_time = et-st
-    # tf.test_runway()
-
