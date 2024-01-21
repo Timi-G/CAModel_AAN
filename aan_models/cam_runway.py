@@ -3,7 +3,7 @@ import random
 import time
 
 import matplotlib.pyplot as plt
-from ga_air_nav import visualizations as vs
+import visualizations as vs
 
 
 class Aircraft:
