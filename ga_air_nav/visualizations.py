@@ -3,14 +3,14 @@ import os
 import cv2 as cv
 import matplotlib.pyplot as plt
 
+
 # Get images directory path dynamically
 CURRENT_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
 PARENT_DIRECTORY = os.path.abspath(os.path.join(CURRENT_DIRECTORY, '..'))
 image_dir = os.path.join(PARENT_DIRECTORY, 'images')
 
-# c_s is string arg for choosing color and symbol
-# !! one of parameters frm_close or close must be set as True
-def create_simple_plots(frames_dict, axis_ranges, image_dir=image_dir, c_s='r+', frm_close=False, close=False):
+
+def clear_image_folder(image_dir):
     # check and delete if images folder has any content
     try:
         # remove images from 'images folder' if folder is not empty
@@ -20,6 +20,11 @@ def create_simple_plots(frames_dict, axis_ranges, image_dir=image_dir, c_s='r+',
                 os.remove(img_file_path)
     except:
         pass
+
+# c_s is string arg for choosing color and symbol
+# !! one of parameters frm_close or close must be set as True
+def create_simple_plots(frames_dict, axis_ranges, image_dir=image_dir, c_s='r+', frm_close=False, close=False):
+    clear_image_folder(image_dir)
 
     for m, arrays in frames_dict.items():
         for n, arr in enumerate(arrays):
