@@ -1,11 +1,16 @@
+import os
 import random
 import time
+
+import matplotlib.pyplot as plt
+from ga_air_nav import visualizations as vs
 
 
 class Aircraft:
     def __init__(self,size,fuel):
         self.size = size
         self.fuel = fuel
+
 
     def fuel_depl(self):
         self.fuel=self.fuel-(self.size//2)
@@ -226,7 +231,8 @@ class Traffic_Control:
         return lv
 
     def runway_per_tstep(self, t_step, node_prob, mov_prob, node_rule=None):
-        if node_rule is None:
+        # initialize node_rule
+        if node_rule==None:
             node_rule = ['random']
         self.t_step = t_step
         lvl1, lvl2, lvl3 = self.converg_group(self.lvl1_struct,mov_prob)
@@ -234,6 +240,7 @@ class Traffic_Control:
         self.levels=[lvl1,lvl2,lvl3]
         # partition lvls as list of lists by runway_group
         lv1 = self.part_lvl(lvl1)
+        lv1_groups = [len(gp) for gp in lv1]
         lv2 = self.part_lvl(lvl2)
 
         lv1_a = self.part_lvl_a(lvl1)
@@ -242,9 +249,56 @@ class Traffic_Control:
         l2out = 0
         l1out = [0] * len(lv1)
 
+        # initialize visualization
+        vs.clear_image_folder(vs.image_dir)
+        im_rows = len(lvl1)
+        lv1_group_close_pos = [0] + [sum(lv1_groups[:n]) - 1 if n != 1 else lv1_groups[0] - 1 for n in
+                                     range(1, len(lv1_groups) + 1)]
+        lv2_pos = [sum(lv1_groups[:n - 1]) + int(g / 2) for n, g in enumerate(lv1_groups, 1)]
+        lv3_pos = round(im_rows / 2)
+
         self.ipool = [r for r in self.main_pool]
         for t in range(t_step):
+            figs, plts = plt.subplots(im_rows, 3)
+            # set axis and grid format of plot
+            for c in range(3):
+                for r in range(im_rows):
+                    plts[r, c].axes.get_xaxis().set_ticklabels([])
+                    plts[r, c].axes.get_yaxis().set_ticklabels([])
+                    plts[r, c].set_xticks([])
+                    plts[r, c].set_yticks([])
+                    # level 1
+                    if c == 0:
+                        plts[r, c].spines['left'].set_visible(False)
+                        plts[r, c].spines['right'].set_visible(False)
+                        if r != 0:
+                            plts[r, c].spines['top'].set_visible(False)
+                        if r not in lv1_group_close_pos:
+                            plts[r, c].spines['bottom'].set_visible(False)
+                        if lv1_groups[0] != 1:
+                            plts[0, c].spines['bottom'].set_visible(False)
 
+                    # level 2
+                    if c == 1:
+                        # let previous level control the preceeding (left) spine
+                        plts[r, c].spines['left'].set_visible(False)
+                        if r in lv2_pos:
+                            plts[r, c].spines['right'].set_visible(False)
+                        else:
+                            plts[r, c].axis('off')
+                    if c == 2:
+                        # let previous level control the preceeding (left) spine
+                        plts[r, c].spines['left'].set_visible(False)
+                        if r == lv3_pos:
+                            plts[r, c].spines['right'].set_visible(False)
+                        else:
+                            plts[r, c].axis('off')
+            
+            # visualize lvl1
+            l1_ax = [[1 if ac!=0 else 0 for ac in rw.runway_flights] for rw in lvl1]
+            for n,ax in enumerate(l1_ax):
+                plts[n, 0].set_ylim(0.9, 1.1)
+                plts[n, 0].scatter(list(range(len(ax))), ax)    
             # lvl1
             for dx, gp in enumerate(lv1):
                 if not all([rw.runway_flights[-1] == 0 for rw in gp]):
@@ -353,6 +407,12 @@ class Traffic_Control:
                     l2out = lvl2[ex_rw].exit_flight
                     lvl2[ex_rw].exit = True
 
+            # visualization lvl2
+            # lv2_pos = [2,3,5,6]
+            lv2_ax=[[1 if ac!=0 else 0 for ac in rw.runway_flights] for rw in lvl2]
+            for p,ax in zip(lv2_pos,lv2_ax):
+                plts[p, 1].set_ylim(0.9, 1.1)
+                plts[p, 1].scatter(list(range(len(ax))), ax)
             for rw in range(len(lvl2)):
                 lvl2[rw].mov_per_tstep()
                 # ensure no flight exits level 2 if movement probability of chosen runway is 0
@@ -371,6 +431,11 @@ class Traffic_Control:
 
             if l3out != 0:
                 lvl3[0].exit = True
+
+            # visualization lvl3
+            ax=[1 if ac!=0 else 0 for ac in lvl3[0].runway_flights]
+            plts[lv3_pos, 2].scatter(list(range(len(ax))), ax)
+            plts[lv3_pos, 2].set_ylim(0.9, 1.1)
             # adjust position of flights in runway after exit
             lvl3[0].mov_per_tstep()
             # ensure no flight exits level 3 to main_pool if movement probability of chosen runway is 0
@@ -401,12 +466,13 @@ class Traffic_Control:
                     for ac in rw.runway_flights:
                         if ac != 0:
                             ac.fuel_depl()
+            images_file = os.path.join(vs.image_dir, f'plot_{t}.png')
+            plt.savefig(images_file)
+            plt.close()
 
-            # print('Main Pool No. ', len(self.main_pool))
-            # print('Total Flights ', total_op_flights(self.main_pool, lvl1, lvl2, lvl3, tl))
-            # print(f'Main Pool: {[ac.size for ac in self.main_pool]}')
-            # print(f'Aircrafts: {chng_list(lvl1)}\n{chng_list(lvl2)}\n{chng_list(lvl3)}\n')
-
+        # visualization
+        # plt.show()
+        vs.make_video('Runways.mp4')
         # calc density of operational flights across all levels
         for l in self.levels:
             for rw in l:
@@ -603,13 +669,13 @@ if __name__ == '__main__':
     st = time.process_time()
 
     tf = Traffic_Control()
-    tf.add_runway([[20, 40, 30, 10], [30, 50], [20, 15, 25], [45]])
-    tf.create_pool(size_dist=[40, 50, 45, 65])
-    tf.runway_per_tstep(t_step=500, node_rule=['health', 'min', 'first_arrival'], node_prob=[30,10,40], mov_prob=40)
+    # tf.add_runway([[20, 40, 30, 10], [30, 50], [20, 15, 25], [45]])
+    tf.add_runway([[4, 4, 4, 4], [5, 5], [8, 8, 8], [5]])
+    tf.create_pool(size_dist=[4, 5, 4, 6])
+    tf.runway_per_tstep(t_step=35, node_rule=['health', 'min', 'first_arrival'], node_prob=[30,10,40], mov_prob=40)
 
     # end time
     et = time.process_time()
     # execution time
     exc_time = et-st
     # tf.test_runway()
-
