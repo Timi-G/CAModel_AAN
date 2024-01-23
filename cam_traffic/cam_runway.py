@@ -7,10 +7,15 @@ from ga_air_nav import visualizations as vs
 
 
 class Aircraft:
-    def __init__(self,size,fuel):
+    def __init__(self,size,fuel,color_scheme):
         self.size = size
         self.fuel = fuel
+        self.color_scheme = color_scheme
+        self.color = self.set_color()
 
+    def set_color(self):
+        colors={n:c for n,c in enumerate(self.color_scheme,1)}
+        return colors[self.size]
 
     def fuel_depl(self):
         self.fuel=self.fuel-(self.size//2)
@@ -149,12 +154,12 @@ class Traffic_Control:
     def __init__(self):
         self.landing=[]
 
-    def create_pool(self, size_dist):
+    def create_pool(self, size_dist, color_scheme):
         self.no_pool_cont = sum(size_dist)
-        self.main_pool = self.create_aircraft(size_dist)
+        self.main_pool = self.create_aircraft(size_dist, color_scheme)
         random.shuffle(self.main_pool)
 
-    def create_aircraft(self,sd):
+    def create_aircraft(self,sd,color_scheme):
         t_rwc=self.tot_rwcells
         thr_trwc=t_rwc//3  #trwc/t_rwc: total runway cells
 
@@ -162,7 +167,7 @@ class Traffic_Control:
         for dx,ac in enumerate(sd,1):
             for n in range(ac):
                 # ensuring fuel is proportional to aircraft size using dx
-                pool+=[Aircraft(size=dx,fuel=random.randint(t_rwc+(2*thr_trwc)*dx,t_rwc*2*dx))]
+                pool+=[Aircraft(size=dx,fuel=random.randint(t_rwc+(2*thr_trwc)*dx,t_rwc*2*dx), color_scheme=color_scheme)]
         return pool
 
     def add_runway(self, level1_structure):
@@ -296,9 +301,10 @@ class Traffic_Control:
             
             # visualize lvl1
             l1_ax = [[1 if ac!=0 else 0 for ac in rw.runway_flights] for rw in lvl1]
-            for n,ax in enumerate(l1_ax):
+            l1_color = [[ac.color if ac != 0 else 'black' for ac in rw.runway_flights] for rw in lvl1]
+            for (n,ax),color in zip(enumerate(l1_ax),l1_color):
                 plts[n, 0].set_ylim(0.9, 1.1)
-                plts[n, 0].scatter(list(range(len(ax))), ax)    
+                plts[n, 0].scatter(list(range(len(ax))), ax, c=color)    
             # lvl1
             for dx, gp in enumerate(lv1):
                 if not all([rw.runway_flights[-1] == 0 for rw in gp]):
@@ -410,9 +416,10 @@ class Traffic_Control:
             # visualization lvl2
             # lv2_pos = [2,3,5,6]
             lv2_ax=[[1 if ac!=0 else 0 for ac in rw.runway_flights] for rw in lvl2]
-            for p,ax in zip(lv2_pos,lv2_ax):
+            lv2_color = [[ac.color if ac != 0 else 'black' for ac in rw.runway_flights] for rw in lvl2]
+            for p,ax,color in zip(lv2_pos,lv2_ax,lv2_color):
                 plts[p, 1].set_ylim(0.9, 1.1)
-                plts[p, 1].scatter(list(range(len(ax))), ax)
+                plts[p, 1].scatter(list(range(len(ax))), ax, c=color)
             for rw in range(len(lvl2)):
                 lvl2[rw].mov_per_tstep()
                 # ensure no flight exits level 2 if movement probability of chosen runway is 0
@@ -433,8 +440,9 @@ class Traffic_Control:
                 lvl3[0].exit = True
 
             # visualization lvl3
-            ax=[1 if ac!=0 else 0 for ac in lvl3[0].runway_flights]
-            plts[lv3_pos, 2].scatter(list(range(len(ax))), ax)
+            l3_ax=[1 if ac!=0 else 0 for ac in lvl3[0].runway_flights]
+            l3_color = [ac.color if ac != 0 else 'black' for ac in lvl3[0].runway_flights]
+            plts[lv3_pos, 2].scatter(list(range(len(l3_ax))), l3_ax,c=l3_color)
             plts[lv3_pos, 2].set_ylim(0.9, 1.1)
             # adjust position of flights in runway after exit
             lvl3[0].mov_per_tstep()
@@ -621,8 +629,10 @@ e.g tf.add_runway([[20,40,30,10],[30,50],[45]]) means
 Note that no. of steps in any level2 runway is average of all the steps in corresponding level1 runway group
 
 #3 Create pool of aircrafts (i.e create_pool method) to be used all through simulation.
-Set distribution of aircraft sizes in pool using size_dist argument e.g size_dist=[40,50,45,65] means
+i) Set distribution of aircraft sizes in pool using size_dist argument e.g size_dist=[40,50,45,65] means
 40 size_1, 50 size_2, 45 size_3 & 65 size_4 aircrafts
+ii) Set color_scheme of aircraft by size e.g. color_scheme=['red','green','yellow','cyan'] will represent colors of 
+Aircraft sizes 1,2,3 & 4 respectively
 
 #4 Run simulation with runway_per_tstep method.
 i) node_rule parameter takes list of string argument 'min','max','random','fuel_level', 'health' and/or first_arrival
@@ -671,7 +681,7 @@ if __name__ == '__main__':
     tf = Traffic_Control()
     # tf.add_runway([[20, 40, 30, 10], [30, 50], [20, 15, 25], [45]])
     tf.add_runway([[4, 4, 4, 4], [5, 5], [8, 8, 8], [5]])
-    tf.create_pool(size_dist=[4, 5, 4, 6])
+    tf.create_pool(size_dist=[4, 5, 4, 6],color_scheme=['yellow','green','red','cyan'])
     tf.runway_per_tstep(t_step=35, node_rule=['health', 'min', 'first_arrival'], node_prob=[30,10,40], mov_prob=40)
 
     # end time
