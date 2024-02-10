@@ -55,5 +55,3 @@ if __name__ == '__main__':
 
 # to run simulation
     simulate(tma,flights,waypoints,obstructions,points,total_tsteps=10)
-
-    display_results(tma,flights,waypoints)
