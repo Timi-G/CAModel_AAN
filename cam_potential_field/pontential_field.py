@@ -1,10 +1,13 @@
 import math
+import os
 import random
+import time
 
 import numpy as np
 from matplotlib import pyplot as plt
 
-from cam_air_nav.cam_airnav_mod import Air_Object, Free_Air_Object, avg_trans_time, col_dept, path_plots
+from ga_air_nav import visualizations as vs
+from cam_air_nav.cam_airnav_mod import Air_Object, Free_Air_Object, avg_trans_time, col_dept, col_dept_sing,path_plots
 from cam_air_nav.cam_airnavconfrules import obj_radius, conv_to_2d
 
 
@@ -63,8 +66,10 @@ class Aircraft(Obj_Field):
             for n in range(len(self.fp[0])):
                 self.fp[m,n]=self.fp[m,n]-1
 
-        self.agg_pos=conv_to_2d(self.agg_pos,2)
-        self.agg_pos=[[m[1],m[0]] for m in self.agg_pos]
+        # collect aggregate position of flight in a better readable form
+        self.coll_sim_agg_pos()
+        # self.agg_pos=conv_to_2d(self.agg_pos,2)
+        # self.agg_pos=[[m[1],m[0]] for m in self.agg_pos]
 
 
 class Obstruction(Oth_Obj_Field):
@@ -76,14 +81,28 @@ class Obstruction(Oth_Obj_Field):
 class Stat_Obstruction(Obstruction):
     pass
 
+# moving obstructions like clouds
 class Mov_Obstruction(Obstruction):
-    def __init__(self,travel_rate,**kwargs):
+    def __init__(self,mob_rate=1,mob_span=0,mut_rate=1,mut_span=0,**kwargs):
+        # default mobility and mutation rate is set to minimal i.e. 1
         super(Mov_Obstruction, self).__init__(**kwargs)
-        self.trav_rate=travel_rate
+        self.mob_rate=mob_rate
+        self.mob_span=mob_span
+        self.mut_rate = mut_rate
+        self.mut_span = mut_span
 
+    # recreate the field potential matrix when the obstruction moves
+    # mob_span to define how many cells by which the obstruction can move in any random direction
     def mov_obs(self):
-        self.pos=[random.randint(1,self.g_size[0]),random.randint(1,self.g_size[1])]
+        p0=random.choice([self.pos[0]-self.mob_span,self.pos[0],self.pos[0]+self.mob_span])
+        p1=random.choice([self.pos[1]-self.mob_span,self.pos[1],self.pos[1]+self.mob_span]) if p0!=self.pos[0] else random.choice([self.pos[1]-self.mob_span,self.pos[1]+self.mob_span])
+        self.pos=[p0,p1]
         self.fld_pot=res_field(self.g_size,self.pos,self.max_pot)
+
+    def mut_obs(self):
+        max_pot=sum([self.max_pot,self.mut_span])
+        self.max_pot=max_pot
+        self.fld_pot = res_field(self.g_size, self.pos, self.max_pot)
 
 class Waypoint(Oth_Obj_Field):
     pass
@@ -91,6 +110,7 @@ class Waypoint(Oth_Obj_Field):
 class Point(Oth_Obj_Field):
     pass
 
+loc_tma=None
 con_rad=[]
 dests=[]
 acraft_info=[]
@@ -178,11 +198,13 @@ def fl_paths(flights,total_tstep):
                     break
 
     elif total_tstep>1:
-        for f in flights:
-            f.flight_path()
+        path_plots(flights)
+        # for f in flights:
+            # f.flight_path()
             # conv. flight path coord to list
-            pat= [list(_) for _ in zip(*f.fp.tolist())]
-            rem_dup(pat,dess,path_plot,f.color)
+            # pat= [list(_) for _ in zip(*f.fp.tolist())]
+            # print('pat',pat)
+            # rem_dup(f.fp,dess,path_plot,f.color)
 
 
 '''Create Field, Enter Potentials & Calc Resultant'''
@@ -255,11 +277,13 @@ def res_field(grid_size,pos,max_pot):
         for m in bg_grid:
             grid+=[m[-pos[0]-size:]]
         grid=grid[size-pos[1]+1:size-pos[1]+1+grid_size[1]]
+            # grid=bg_grid[-pos[0]-1-size:-1][size-pos[1]:size-pos[1]+grid_size[1]]
     # longest potential reduc. is u-d_end
     elif size==len_lst[1]:
         for m in bg_grid:
             grid+=[m[size-pos[0]+1:size-pos[0]+1+grid_size[0]]]
         grid=grid[-pos[1]-size:]
+        # grid=bg_grid[size-pos[0]:size-pos[0]+grid_size[0]][-pos[1]-size:]
     # longest potential reduc. is l_start-r
     elif size == len_lst[2]:
         for m in bg_grid:
@@ -290,23 +314,27 @@ def col_dest(tma,max_pot):
     return dests
 
 # collect number of flights moving per t_step
-def col_fl_per_t(tma,flights):
-    ftl=[]
+def col_fl_per_t(tma,flights,foc_flights=None):
+    tmv=[]
 
     # create list of all agg_pos
-    t_agpos=[flight.agg_pos for flight in flights]
-    tma.tot_tstep=max([len(ts) for ts in t_agpos])
+    if foc_flights:
+        t_agpos=foc_flights
+        tot_tstep=max([len(ts) for ts in t_agpos])
+    else:
+        t_agpos=[flight.agg_pos for flight in flights]
+        tot_tstep=tma.tot_tstep=max([len(ts) for ts in t_agpos])
     # try..except to handle n which is beyond index for list elements
-    for n in range(tma.tot_tstep):
-        ft=0
+    for n in range(tot_tstep):
+        mv=0
         for m in t_agpos:
             try:
                 if m[n] != m[n+1]:
-                    ft+=1
+                    mv+=1
             except:
                 pass
-        ftl+=[ft]
-    return ftl
+        tmv +=[mv]
+    return tmv
 
 def vel_per_t(tma,flights):
     no_fl = col_fl_per_t(tma,flights)
@@ -316,6 +344,16 @@ def vel_per_t(tma,flights):
     tma.vel = velocity
     tma.avg_vel = sum(tma.vel)/tma.tot_tstep
 
+# calculate number of movement in simulation for a given number of timesteps
+# for a given number of aircraft over number of maximum possible movement for stated aircraft
+def cal_flow(t_steps,flights,tma=None):
+    if not tma:
+        global loc_tma
+        tma=loc_tma
+    # get position of flight in defined t_steps
+    foc_flights=[fl.agg_pos[:t_steps] for fl in flights]
+    flow=sum(col_fl_per_t(tma,flights,foc_flights))/(t_steps*len(flights))
+    return flow
 
 '''Conflict Resolution'''
 # return content of different positions in object
@@ -338,11 +376,10 @@ def nxt_pos(field,pos):
 
     # in case of -ve dimen. in coord., change to original pos
     for c in crds:
-        if all(_>=0 for _ in c):
+        if all([_>=0 for _ in c]):
             cords+=[c]
         else:
-            cords+=[crds[0]]
-
+            cords+=[pos]
     vals=pos_vals(fd,cords) # vals content sequence is clockwise i.e pos,E,SE,S,...,NE
     mvals=[i-vals[0] for i in vals]
 
@@ -366,11 +403,13 @@ def conf_resl(field,flights,flight):
     con_rad = [f.pos for f in flights if f.pos not in dests and f!=flight]
 
     pos = flight.pos
+    # visualization coord starts from 1 but in simulation it is 0, hence the need to reduce pos by 1 for simulation
     fp = [pos[0]-1,pos[1]-1]
     rf = field
 
     npi = nxt_pos(rf,fp)
 
+    # rf[pos[0]][pos[1] + 1] == pt + 1 former concept
     # no movement
     if npi==0:
         flight.pot = rf[fp[1]][fp[0]]
@@ -431,36 +470,67 @@ def rand_acraft_info():
     global acraft_info
     return acraft_info
 
-def rand_ac_arg(grid_size,max_pot,max_size,plt_colors):
-    row = random.randint(1, grid_size[0])
-    col = random.randint(1, grid_size[1])
+def rand_ac_arg(grid_size,max_pot,max_size,plt_colors,side=None):
+    row=None
+    col=None
+    if side=='up':
+        row = 1
+        col = random.randint(1, grid_size[1])
+    if side=='down':
+        row = grid_size[0]
+        col = random.randint(1, grid_size[1])
+    if side=='left':
+        row = random.randint(1, grid_size[0])
+        col = 1
+    if side=='right':
+        row = random.randint(1, grid_size[0])
+        col = grid_size[1]
+    if not side:
+        row = random.randint(1, grid_size[0])
+        col = random.randint(1, grid_size[1])
     mp = random.randint(max_pot // 2, max_pot)
     ms = random.randint(1, max_size)
     pc = random.choice(plt_colors)
     return row,col,mp,ms,pc
 
-def rand_aircrafts(no_aircrafts,max_pot,grid_size,max_size,plt_colors,null_pont=False):
+# create aircrafts by category, this function is used to create multiple aircrafts
+def cat_aircrafts(no_aircrafts,grid_size, max_pot, max_size, plt_colors, side=None, null_pont=False):
     global acraft_info,a_cord
     acrafts=[]
     a_info=[]
     for _ in range(no_aircrafts):
-    # one cell to one aircraft
+        # one cell to one aircraft
         while True:
-            row, col, mp, ms, pc = rand_ac_arg(grid_size, max_pot, max_size, plt_colors)
-            if [row,col] not in a_cord:
-                a_cord+=[[row,col]]
-                acrafts+=[Aircraft(row=row,column=col,max_pot=mp,grid_size=grid_size,size=ms,plt_color=pc,null_pont=null_pont)]
+            row, col, mp, ms, pc = rand_ac_arg(grid_size, max_pot, max_size, plt_colors, side)
+            if [row, col] not in a_cord:
+                a_cord += [[row, col]]
+                acrafts += [Aircraft(row=row, column=col, max_pot=mp, grid_size=grid_size, size=ms, plt_color=pc,
+                                     null_pont=null_pont)]
                 a_info += [{'row': row, 'column': col, 'max_pot': mp, 'max_size': ms, 'plt_color': pc}]
-                # print(a_info)
                 break
-    acraft_info+=a_info
+    acraft_info += a_info
+    return acrafts
+
+def multiple_aircrafts(max_pot,grid_size,max_size,plt_colors,rand_aircrafts=None,start_sides=None,null_pont=False):
+    acrafts=[]
+    # check starting sides declared and number of starting sides for given aircrafts
+    if start_sides:
+        sides = start_sides.keys()
+        for side in sides:
+            no_aircrafts=start_sides[side]
+            acrafts+=cat_aircrafts(no_aircrafts,grid_size,max_pot,max_size,plt_colors,side,null_pont)
+
+    # create random aircrafts from any sides
+    if rand_aircrafts:
+        acrafts+=cat_aircrafts(rand_aircrafts, grid_size, max_pot, max_size, plt_colors, null_pont)
+
     return acrafts
 
 
 '''Simulation'''
 # to implement boundary condition for cycling aircraft movement
 # at destination, flight starts again from closest to first starting point
-def cyc_sim(fl):
+def cyc_sim(field,fl):
     len_lst = [fl.g_size[0] - fl.dept[0], fl.g_size[1] - fl.dept[1], fl.dept[0], fl.dept[1]]
     prox = min(len_lst)
 
@@ -469,12 +539,14 @@ def cyc_sim(fl):
     elif prox==len_lst[1]:
         fl.pos[0], fl.pos[1] = fl.dept[0], fl.g_size[1]
     elif prox==len_lst[2]:
-        fl.pos[0], fl.pos[1] = 0, fl.dept[1]
+        fl.pos[0], fl.pos[1] = 1, fl.dept[1]
     elif prox==len_lst[3]:
-        fl.pos[0], fl.pos[1] = fl.dept[0], 0
+        fl.pos[0], fl.pos[1] = fl.dept[0], 1
+    # set new flight positions' potential
+    # visualization coords starts from 1 but in simulation it is 0, hence the need to reduce pos by 1 for simulation
+    fl.pot=field[fl.pos[1]-1][fl.pos[0]-1]
 
 def sim_field_gen(tma,objs,mov_obstructions):
-    global dests
     objs=objs+mov_obstructions
     potns = [fd.fld_pot for fd in objs]
 
@@ -482,35 +554,67 @@ def sim_field_gen(tma,objs,mov_obstructions):
     tma.max_pot = max([n for m in tma.fld for n in m])
 
     dests = col_dest(tma.fld, tma.max_pot)
+    return dests
 
 def mov_obstr_sim(tma,objs,mov_obstructions,t_step):
     global dests
     for mob in mov_obstructions:
-        if t_step % mob.trav_rate==0:
+        # Encapsulated attributes for mobility and mutation handles cases of no mobility or mutation
+        # however if-and condition is to ensure unnecessary call to the obstructions' mobility and mutation functions
+        # mobility
+        if t_step % mob.mob_rate==0 and mob.mob_rate!=1 and mob.mob_span!=0:
             mob.mov_obs()
-            dests = []
-            sim_field_gen(tma,objs,mov_obstructions)
+        # mutation
+        if t_step % mob.mut_rate==0 and mob.mut_rate!=1 and mob.mut_span!=0:
+            mob.mut_obs()
+    dests = []
+    dests = sim_field_gen(tma, objs, mov_obstructions)
+
+def plot_vis(t_step,flights,tma):
+    # plot visualization
+    fl_paths(flights, t_step)
+    xat = [i for i in range(len(tma[0].fld[0]))]
+    yat = [i for i in range(len(tma[0].fld))]
+    xal = [i + 1 for i in range(len(tma[0].fld[0]))]
+    yal = [i + 1 for i in range(len(tma[0].fld))]
+    plt.xticks(xat, xal)
+    plt.yticks(yat, yal)
+    plt.imshow(np.array(tma[0].fld), cmap='binary')
+    plt.colorbar()
+    # plt.show()
+    images_file = os.path.join(vs.image_dir, f'plot_{t_step}.png')
+    plt.savefig(images_file)
+    plt.close()
 
 def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,total_tstep=1):
-    global dests
+    global dests,loc_tma
 
     col_dept(flights)
 
     objs = flights + waypoints + tma + stat_obstructions
-    sim_field_gen(tma[0],objs,mov_obstructions)
+    dests = sim_field_gen(tma[0],objs,mov_obstructions)
+    # capture first movement
+    plot_vis(0, flights, tma)
 
     if total_tstep>1:
-        for t in range(total_tstep):
+        for t in range(1,total_tstep+1):
             mov_obstr_sim(tma[0],objs,mov_obstructions,t+1)
             for flight in flights:
-                conf_resl(tma[0].fld,flights,flight)
+                # if-else: Cycle flight/boundary condition and flight movement
+                '''
+                Update: single expected destination can be specified by user for situations
+                where mutiple points have maximum potential. flight.pos==dests conditon can be included for this
+                '''
+                if flight.pot==tma[0].max_pot:
+                    cyc_sim(tma[0].fld,flight)
+                    flight.disp_agg_pos = []
+                else:
+                    conf_resl(tma[0].fld,flights,flight)
                 flight.collect_pos()
                 flight.collect_distn()
 
-                # cycle flight/boundary condition
-                if flight.pot==tma[0].max_pot:
-                    cyc_sim(flight)
-                    flight.collect_pos()
+            # plot visualization
+            plot_vis(t,flights,tma)
 
     t=0
     if total_tstep==1:
@@ -526,20 +630,11 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,total_tste
             if all([f.pot==tma[0].max_pot for f in flights]):
                 break
 
+            # plot visualization
+            plot_vis(t, flights, tma)
+
     # get field density
     tma[0].fd_dens(flights)
-
-    # plot visualization
-    fl_paths(flights,total_tstep)
-    xat=[i for i in range(len(tma[0].fld[0]))]
-    yat= [i for i in range(len(tma[0].fld))]
-    xal=[i+1 for i in range(len(tma[0].fld[0]))]
-    yal=[i+1 for i in range(len(tma[0].fld))]
-    plt.xticks(xat,xal)
-    plt.yticks(yat,yal)
-    plt.imshow(np.array(tma[0].fld),cmap='binary')
-    plt.colorbar()
-    plt.show()
 
     # get average transit time of flights
     des=swi_cord_elem(dests)
@@ -549,8 +644,14 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,total_tste
     # av_distn(tma,flights) average distance func needs update
     vel_per_t(tma[0],flights)
 
+    # set tma as a global variable loc_tma for further use acros the simulation
+    loc_tma=tma[0]
+    # create simulation video
+    vs.make_video('potential.mp4')
+
 
 def simulate(flights,waypoints,stat_obstructions,mov_obstructions,tma,total_tstep=1):
+    # initialize visualization
+    vs.clear_image_folder(vs.image_dir)
 
     sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,total_tstep)
-
