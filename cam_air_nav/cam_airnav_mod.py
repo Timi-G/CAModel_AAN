@@ -23,6 +23,7 @@ class Air_Object:
         self.pos = [dept[0],dept[1]]
         self.agg_pos = []
         self.sim_agg_pos = []
+        self.disp_agg_pos = []
         self.t_step = 0
         self.avg_tnstime = 0
         self.sim_avg_tnstime = []
@@ -33,6 +34,7 @@ class Air_Object:
 # to define object path; combining the object's different progressive positions
     def collect_pos(self):
         self.agg_pos=self.agg_pos+self.pos
+        self.disp_agg_pos=self.disp_agg_pos+self.pos
         if self.agg_pos[-3:-1] != self.dest:
             self.t_step += 1
 
@@ -42,7 +44,7 @@ class Air_Object:
 
 # the object path as a 2D array
     def flight_path(self):
-        fp = np.array(self.agg_pos)
+        fp = np.array(self.disp_agg_pos)
         nfp = fp.reshape(-1,2)
         self.fp = nfp.T
 
@@ -291,29 +293,32 @@ def split_num(num):
 # i) ga parameter takes 'None' arg or a list arg [[x1,y1],[x2,y2],[x3,y3]...]
 # ii) dependent on if func is being used in the Genetic Algorithm Experiment (ga_airnav.py) or not
 def inst_flights(num_flights,coord,dest,size,ga=None):
+    flights = []
     if ga:
-        flights = []
         for a_dep in ga:
             flights += [Flight(dept=a_dep, dest=dest, size=size)]
     else:
-        flights=[Flight(dept=[random.randint(*coord[0]), random.randint(*coord[1])], dest=dest, size=size)
-             for _ in range(1,num_flights+1) if num_flights >= 1]
+        # ensure created aircrafts maintain conflict rules
+        for _ in range(1, num_flights + 1):
+            if num_flights >= 1:
+                # aircraft creation
+                flights += [Flight(dept=[random.randint(*coord[0]), random.randint(*coord[1])], dest=dest, size=size)]
+                con_rad = []
+                # check for conflict
+                ccf.objs_con_rad(flights[-2:],con_rad)
+                # resolve conflict
+                if flights[-1].dept in con_rad:
+                    del flights[-1]
+                    need_resolve = True
+                    while need_resolve:
+                        flight = Flight(dept=[random.randint(*coord[0]), random.randint(*coord[1])], dest=dest, size=size)
+                        if not flight.dept in con_rad:
+                            flights += [flight]
+                            need_resolve = False
     return flights
 
 # func for creating flights by subdir
-def _n_dep_flights(num_flights,coord,dest,size,ga):
-    fl=inst_flights(num_flights, coord, dest, size,ga)
-    return fl
-
-def _s_dep_flights(num_flights,coord,dest,size,ga):
-    fl=inst_flights(num_flights, coord, dest, size,ga)
-    return fl
-
-def _e_dep_flights(num_flights, coord, dest, size,ga):
-    fl=inst_flights(num_flights, coord, dest, size,ga)
-    return fl
-
-def _w_dep_flights(num_flights, coord, dest, size,ga):
+def _dep_flights(num_flights, coord, dest, size, ga):
     fl=inst_flights(num_flights, coord, dest, size,ga)
     return fl
 
@@ -335,21 +340,21 @@ def create_flights(north,south,east,west,tma_coord,dest,size,spread,ga=None):
     ns_spr_range = get_spread_range(spread, tma_coord[1])
     if all_flights[0] != 0:
         n_coords = [tma_coord[0],[tma_coord[1][1]-ns_spr_range,tma_coord[1][1]]]
-        n = _n_dep_flights(north,n_coords,dest,size,ga)
+        n = _dep_flights(north,n_coords,dest,size,ga)
 
     if all_flights[1] != 0:
         s_coords = [tma_coord[0],[tma_coord[1][0],tma_coord[1][0]+ns_spr_range]]
-        s = _s_dep_flights(south,s_coords,dest,size,ga)
+        s = _dep_flights(south,s_coords,dest,size,ga)
 
     # east & west
     ew_spr_range = get_spread_range(spread, tma_coord[0])
     if all_flights[2] != 0:
         e_coords = [[tma_coord[0][0],tma_coord[0][0]+ew_spr_range],tma_coord[1]]
-        e = _e_dep_flights(east, e_coords, dest, size, ga)
+        e = _dep_flights(east, e_coords, dest, size, ga)
 
     if all_flights[3] != 0:
         w_coords = [[tma_coord[0][0]-ew_spr_range,tma_coord[0][1]], tma_coord[1]]
-        w = _w_dep_flights(west, w_coords, dest, size, ga)
+        w = _dep_flights(west, w_coords, dest, size, ga)
 
     flights_raw = [n,s,e,w]
     flights = [fl for fl in flights_raw if fl != 0]
@@ -387,6 +392,7 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,total_tstep):
                 # cycle flight/boundary condtion
                 if flight.pos==flight.dest:
                     flight.pos[0],flight.pos[1]=flight.dept[0],flight.dept[1]
+                    flight.disp_agg_pos=[]
                     col_dept_sing(flight)
 
         # collect flight densities at points for each t_step
@@ -420,7 +426,6 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,total_tstep):
     # get average transit time of flights
     for f in flights:
         f.coll_sim_agg_pos()
-        print(f.sim_agg_pos)
         f.avg_transit_time()
     av_distn(tma,flights)
     vel_per_t(points,flights,total_tstep)
