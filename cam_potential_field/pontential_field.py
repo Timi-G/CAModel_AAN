@@ -86,23 +86,36 @@ class Mov_Obstruction(Obstruction):
     def __init__(self,mob_rate=1,mob_span=0,mut_rate=1,mut_span=0,**kwargs):
         # default mobility and mutation rate is set to minimal i.e. 1
         super(Mov_Obstruction, self).__init__(**kwargs)
-        self.mob_rate=mob_rate
-        self.mob_span=mob_span
+        self.mob_rate = mob_rate
+        self.mob_span = mob_span
         self.mut_rate = mut_rate
         self.mut_span = mut_span
+        self.original_pos = tuple(self.pos)
 
     # recreate the field potential matrix when the obstruction moves
-    # mob_span to define how many cells by which the obstruction can move in any random direction
+    # mob_span to restrict no. of cells the obstruction can move in any random direction throughout the simulation
     def mov_obs(self):
-        p0=random.choice([self.pos[0]-self.mob_span,self.pos[0],self.pos[0]+self.mob_span])
-        p1=random.choice([self.pos[1]-self.mob_span,self.pos[1],self.pos[1]+self.mob_span]) if p0!=self.pos[0] else random.choice([self.pos[1]-self.mob_span,self.pos[1]+self.mob_span])
+        p0 = random.choice([self.pos[0]-1,self.pos[0],self.pos[0]+1])
+        # reset coord so that obstruction never moves past user-defined span
+        while p0>self.original_pos[0]+self.mob_span or p0<self.original_pos[0]-self.mob_span:
+            p0 = random.choice([self.pos[0] - 1, self.pos[0], self.pos[0] + 1])
+
+        p1 = random.choice([self.pos[1]-1,self.pos[1],self.pos[1]+1]) if p0!=self.pos[0] else random.choice([self.pos[1]-1,self.pos[1]+1])
+        # reset coord so that obstruction never moves past user-defined span
+        while p1>self.original_pos[1]+self.mob_span or p1<self.original_pos[1]-self.mob_span:
+            p1 = random.choice([self.pos[1]-1,self.pos[1],self.pos[1]+1]) if p0!=self.pos[0] else random.choice([self.pos[1]-1,self.pos[1]+1])
+
         self.pos=[p0,p1]
         self.fld_pot=res_field(self.g_size,self.pos,self.max_pot)
+        # change field potential to negative given obstructions have repulsive forces
+        self.fld_pot = change_anydim_lst_sign(self.fld_pot, change_sign)
 
     def mut_obs(self):
-        max_pot=sum([self.max_pot,self.mut_span])
+        max_pot=random.choice(range(sum([self.max_pot,-self.mut_span]),sum([self.max_pot,self.mut_span,1])))
         self.max_pot=max_pot
         self.fld_pot = res_field(self.g_size, self.pos, self.max_pot)
+        # change field potential to negative given obstructions have repulsive forces
+        self.fld_pot = change_anydim_lst_sign(self.fld_pot, change_sign)
 
 class Waypoint(Oth_Obj_Field):
     pass
@@ -117,6 +130,17 @@ acraft_info=[]
 a_cord=[]
 
 '''Abstract Modifiers/Correctors'''
+# restrict magnitude of elements of a list within a range
+def restrict_num(original_lst,lst,max_change):
+    nlist = []
+    # get indexes of elements that are out of range
+    for n, ol, l in enumerate(zip(original_lst, lst)):
+        p = l
+        while p-ol > max_change or ol-p < max_change:
+            p = l
+            p = random.choice([p-1, p+1])
+        nlist += [p]
+
 # switch row & col to y & x respect.
 def swi_cord_elem(cord):
     if isinstance(cord[0],list):
@@ -199,12 +223,6 @@ def fl_paths(flights,total_tstep):
 
     elif total_tstep>1:
         path_plots(flights)
-        # for f in flights:
-            # f.flight_path()
-            # conv. flight path coord to list
-            # pat= [list(_) for _ in zip(*f.fp.tolist())]
-            # print('pat',pat)
-            # rem_dup(f.fp,dess,path_plot,f.color)
 
 
 '''Create Field, Enter Potentials & Calc Resultant'''
@@ -609,6 +627,7 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,total_tste
                     cyc_sim(tma[0].fld,flight)
                     flight.disp_agg_pos = []
                 else:
+                    # aircraft movement
                     conf_resl(tma[0].fld,flights,flight)
                 flight.collect_pos()
                 flight.collect_distn()
