@@ -10,9 +10,10 @@ ________________________________________________________________
 
 create multiple randomly positioned aircrafts using multiple_aircrafts func.:
 no_aircrafts: number of a_crafts, max_pot:max potential any of the a_craft can have
-set rand_ac==True to generate random aircrafts with random position (defaults to False)
+set rand_ac=True to generate random aircrafts with random position (defaults to False)
 set starting_sides
 max_size: max size any of the a_crafts can have, plt_colors:list of colors that will represent the flight paths
+null_pont=True will create aircraft with completely zero potential (defaults to False)
 
 display info of randomly generated a_crafts using disp_ran_acraft_info()
 get list of parameters on randomly generated a_crafts using rand_acraft_info()
@@ -22,11 +23,15 @@ get flight transition time with f1.avg_tnstime,f2.avg_tnstime...
 get dens of resultant field with tma.dens
 get velocity with tma.vel and tma.avg_vel
 get flow of a given number of aircraft within specified time steps using cal_flow(t_steps,flights) it takes an optional func. tma 
+
+density is no. of flights/area of tma
+velocity is no. of movements throughout the simulation
+average velocity is no. of aircraft movement/total time step
 '''
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    grid_size = [10, 15]
+    grid_size = [20, 25]
 
     tma = TMA(row=6,column=6,max_pot=50,grid_size=grid_size)
 
