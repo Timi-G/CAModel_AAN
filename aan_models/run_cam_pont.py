@@ -27,33 +27,47 @@ get flow of a given number of aircraft within specified time steps using cal_flo
 density is no. of flights/area of tma
 velocity is no. of movements throughout the simulation
 average velocity is no. of aircraft movement/total time step
+
+show_vis_clip variable is used to set how many sims to run at a given time and which sim should have visualizations
 '''
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     grid_size = [20, 25]
+    show_vis_clip = [True, True, False]
+    # try the convention:
+    # show_vis_clip = [True] * 3 + [True] * 5 + [False] * 2
 
-    tma = TMA(row=6,column=6,max_pot=50,grid_size=grid_size)
+    # define a collector for desired quantities here
+    # e.g. flows=[]
+    for clip_no, show_single_clip in enumerate(show_vis_clip, 1):
+        tma = TMA(row=6,column=6,max_pot=50,grid_size=grid_size)
 
-    f1 = Aircraft(row=5,column=9,max_pot=9,grid_size=grid_size,size=1,plt_color='b',null_pont=True)
-    f2 = Aircraft(row=3,column=5, max_pot=10, grid_size=grid_size, size=1,plt_color='r')
-    f3 = Aircraft(row=8,column=14, max_pot=7, grid_size=grid_size, size=2,plt_color='g')
-    f4 = Aircraft(row=10, column=9, max_pot=5, grid_size=grid_size, size=2, plt_color='w')
+        f1 = Aircraft(row=5,column=9,max_pot=9,grid_size=grid_size,size=1,plt_color='b',null_pont=True)
+        f2 = Aircraft(row=3,column=5, max_pot=10, grid_size=grid_size, size=1,plt_color='r')
+        f3 = Aircraft(row=8,column=14, max_pot=7, grid_size=grid_size, size=2,plt_color='g')
+        f4 = Aircraft(row=10, column=9, max_pot=5, grid_size=grid_size, size=2, plt_color='w')
 
-    fr1 = multiple_aircrafts(rand_aircrafts=50,max_pot=5,grid_size=grid_size,max_size=2,plt_colors=['c','r','m','y'],null_pont=False)
-    fr2 = multiple_aircrafts(max_pot=5, grid_size=grid_size, max_size=2, plt_colors=['c', 'r', 'm', 'y'],
-                            start_sides={'up':3,'down':1,'left':2,'right':1}, null_pont=False)
+        fr1 = multiple_aircrafts(rand_aircrafts=50,max_pot=5,grid_size=grid_size,max_size=2,plt_colors=['c','r','m','y'],null_pont=False)
+        fr2 = multiple_aircrafts(max_pot=5, grid_size=grid_size, max_size=2, plt_colors=['c', 'r', 'm', 'y'],
+                                start_sides={'up':3,'down':1,'left':2,'right':1}, null_pont=False)
 
-    w1 = Waypoint(row=6,column=11,max_pot=6,grid_size=grid_size,size=2)
+        w1 = Waypoint(row=6,column=11,max_pot=6,grid_size=grid_size,size=2)
 
-    sob1 = Stat_Obstruction(row=7,column=3,max_pot=8,grid_size=grid_size,size=1)
+        sob1 = Stat_Obstruction(row=7,column=3,max_pot=8,grid_size=grid_size,size=1)
 
-    mob1 = Mov_Obstruction(row=7, column=3, max_pot=8, grid_size=grid_size, size=1, mob_rate=5, mob_span=1, mut_rate=7, mut_span=3)
+        mob1 = Mov_Obstruction(row=7, column=3, max_pot=8, grid_size=grid_size, size=1, mob_rate=5, mob_span=1, mut_rate=7, mut_span=3)
 
-    field = [tma]
-    flights = fr1+fr2+[f1, f2, f3, f4]
-    waypoints = [w1]
-    stat_obstructions = [sob1]
-    mov_obstructions = [mob1]
+        field = [tma]
+        flights = [f1, f2, f3, f4]
+        waypoints = [w1]
+        stat_obstructions = [sob1]
+        mov_obstructions = [mob1]
 
-    simulate(flights,waypoints,stat_obstructions,mov_obstructions,field,total_tstep=50)
+        simulate(flights,waypoints,stat_obstructions,mov_obstructions,field,show_single_clip,clip_no,total_tstep=20)
+
+        # put functions to calculate any desired quantities here
+        # e.g. flows+=[cal_flow(15,fr1)]
+
+    # find average of quantities here
+    # e.g. avg_flow=sum(flows)/len(flows)
