@@ -597,6 +597,7 @@ def plot_vis(t_step,flights,tma):
     yal = [i + 1 for i in range(len(tma[0].fld))]
     plt.xticks(xat, xal)
     plt.yticks(yat, yal)
+    plt.tick_params(left=False, bottom=False, labelbottom=False, labelleft=False)
     plt.imshow(np.array(tma[0].fld), cmap='binary')
     plt.colorbar()
     # plt.show()
@@ -604,7 +605,7 @@ def plot_vis(t_step,flights,tma):
     plt.savefig(images_file)
     plt.close()
 
-def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,total_tstep=1):
+def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_clip,clip_no,total_tstep=1):
     global dests,loc_tma
 
     col_dept(flights)
@@ -612,7 +613,8 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,total_tste
     objs = flights + waypoints + tma + stat_obstructions
     dests = sim_field_gen(tma[0],objs,mov_obstructions)
     # capture first movement
-    plot_vis(0, flights, tma)
+    if show_vis_clip:
+        plot_vis(0, flights, tma)
 
     if total_tstep>1:
         for t in range(1,total_tstep+1):
@@ -633,7 +635,8 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,total_tste
                 flight.collect_distn()
 
             # plot visualization
-            plot_vis(t,flights,tma)
+            if show_vis_clip:
+                plot_vis(t,flights,tma)
 
     t=0
     if total_tstep==1:
@@ -650,7 +653,8 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,total_tste
                 break
 
             # plot visualization
-            plot_vis(t, flights, tma)
+            if show_vis_clip:
+                plot_vis(t, flights, tma)
 
     # get field density
     tma[0].fd_dens(flights)
@@ -666,11 +670,11 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,total_tste
     # set tma as a global variable loc_tma for further use acros the simulation
     loc_tma=tma[0]
     # create simulation video
-    vs.make_video('potential.mp4')
+    if show_vis_clip:
+        vs.make_video(f'potential{clip_no}.mp4')
 
-
-def simulate(flights,waypoints,stat_obstructions,mov_obstructions,tma,total_tstep=1):
+def simulate(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_clip,clip_no, total_tstep=1):
     # initialize visualization
     vs.clear_image_folder(vs.image_dir)
 
-    sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,total_tstep)
+    sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_clip,clip_no,total_tstep)
