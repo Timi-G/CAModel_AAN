@@ -45,8 +45,11 @@ class TMA:
         self.fld = []
         self.dens = 0
         self.tot_tstep = 0
+        self.transit_time=0
         self.vel = []
-        self.avg_vel = 0
+        self.avg_transit_time = 0
+        self.avg_vel_a = 0
+        self.avg_vel_b = 0
 
     def fd_dens(self,objs):
         self.dens=len(objs)/(self.g_size[0]*self.g_size[1])
@@ -360,7 +363,9 @@ def vel_per_t(tma,flights):
     velocity = [nf / len(flights) for nf in no_fl]
 
     tma.vel = velocity
-    tma.avg_vel = sum(tma.vel)/tma.tot_tstep
+    sum_vel = sum(tma.vel)
+    tma.avg_vel_a = sum_vel/tma.tot_tstep
+    tma.avg_vel_b = sum_vel/len(flights)
 
 # calculate number of movement in simulation for a given number of timesteps
 # for a given number of aircraft over number of maximum possible movement for stated aircraft
@@ -660,9 +665,13 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_c
     tma[0].fd_dens(flights)
 
     # get average transit time of flights
+    # derive sim_agg_pos first as it is needed to get transit time
     des=swi_cord_elem(dests)
     for f in flights:
-        f.avg_tnstime = avg_trans_time(f.agg_pos,des)
+        f.coll_sim_agg_pos()
+        f.no_journ,f.avg_tnstime = avg_trans_time(f.sim_agg_pos,des)
+        tma[0].transit_time+=f.avg_tnstime
+    tma[0].avg_transit_time=tma[0].transit_time/len(flights)
 
     # av_distn(tma,flights) average distance func needs update
     vel_per_t(tma[0],flights)
