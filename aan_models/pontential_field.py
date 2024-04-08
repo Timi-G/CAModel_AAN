@@ -6,7 +6,7 @@ import time
 import numpy as np
 from matplotlib import pyplot as plt
 
-from ga_air_nav import visualizations as vs
+import visualizations as vs
 from cam_airnav_mod import Air_Object, Free_Air_Object, avg_trans_time, col_dept, col_dept_sing,path_plots
 from cam_airnavconfrules import obj_radius, conv_to_2d
 
