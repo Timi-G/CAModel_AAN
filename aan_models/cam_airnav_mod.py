@@ -25,6 +25,7 @@ class Air_Object:
         self.sim_agg_pos = []
         self.disp_agg_pos = []
         self.t_step = 0
+        self.no_journ = 0
         self.avg_tnstime = 0
         self.sim_avg_tnstime = []
         self.distn = 0
@@ -55,7 +56,7 @@ class Air_Object:
         self.agg_distn+=[self.distn]
 
     def avg_transit_time(self):
-        self.avg_tnstime = avg_trans_time(self.sim_agg_pos,self.dest)
+        self.no_journ,self.avg_tnstime = avg_trans_time(self.sim_agg_pos,self.dest)
 
 # class for other objects and points in the air during flight
 class Free_Air_Object:
@@ -179,6 +180,7 @@ def res_mov(ps,flights):
         p.agg_vel=list(map(sum,p.ob_mov))
 
 # calc avg transit time
+# returns no of completed journeys travelled by an aircraft and the avgerage transit time
 def avg_trans_time(sim_agg_pos,des):
     no_journ=0
 
@@ -201,7 +203,7 @@ def avg_trans_time(sim_agg_pos,des):
         avg = sum(ts) / no_journ
     else:
         avg = 0
-    return avg
+    return no_journ,avg
 
 def av_distn(tma,flights):
     # get total t_step of experiment
