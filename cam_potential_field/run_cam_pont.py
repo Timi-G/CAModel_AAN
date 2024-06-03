@@ -1,6 +1,26 @@
-from pontential_field import Aircraft, Waypoint, Stat_Obstruction,Mov_Obstruction,\
-                            TMA, simulate, multiple_aircrafts, cal_flow, disp_ran_acraft_info, rand_acraft_info
+from matplotlib import pyplot as plt
 
+from ga_air_nav import visualizations as vs
+from pontential_field import Aircraft, Waypoint, Stat_Obstruction,Mov_Obstruction,\
+                            TMA, simulate, multiple_aircrafts, cal_flow, store_objects,disp_ran_acraft_info, rand_acraft_info,\
+                            plot_vis
+
+
+def create_video_vis(sim_field):
+    clips=sim_field.sim_path_conf
+    clips_name=list(clips.keys())
+    for k in clips_name:
+        for fp in clips[k]['flight_path']:
+            x,y=fp
+            plt.plot(x,y)
+        fld=clips[k]['field']
+        plot_vis(k,fld)
+    vs.make_video(f'potential.mp4')
+
+sim_objects={}
+def make_video(video_no):
+    sim_field=sim_objects['fields'][video_no-1][0]
+    create_video_vis(sim_field)
 '''
 Create flight, waypoint, static obstructions and mobile obstructions objects f1,f2,f3,w1,w2,sob1,mob1...
 and include all objects needed in respective experiment list
@@ -36,10 +56,12 @@ show_vis_clip variable is used to set how many sims to run at a given time and w
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    t_steps = 5
+    sim_objects_container={'field':[],'flights':[],'waypoints':[],'static_obstructions':[],'moving_obstructions':[]}
+
+    t_steps = 4
     clip_no = 0
     grid_size = [20, 25]
-    show_vis_clip = [False]
+    show_vis_clip = [True, False]
     # try the convention:
     # show_vis_clip = [True] * 3 + [True] * 5 + [False] * 2
     total_flows=[]
@@ -54,11 +76,11 @@ if __name__ == '__main__':
     for n,(nra,nas,ms,mp) in enumerate(zip(no_rand_aircrafts,no_aircrafts_from_sides,max_size,max_pot),0):
         # define a collector for desired quantities here
         # e.g. flows=[]
-        flows=[]
-        avg_transit_time=[]
+        flows = []
+        avg_transit_time = []
         for no, show_single_clip in enumerate(show_vis_clip, 1):
             '''clip_no is index of video visualization'''
-            clip_no=(n*len(show_vis_clip))+no
+            clip_no = (n*len(show_vis_clip))+no
             # clip_no+=1 if show_single_clip else clip_no
 
             tma = TMA(row=6,column=6,max_pot=50,grid_size=grid_size)
@@ -89,8 +111,11 @@ if __name__ == '__main__':
             stat_obstructions = [sob1]
             mov_obstructions = [mob1]
 
-            simulate(flights,waypoints,stat_obstructions,mov_obstructions,field,show_single_clip,clip_no,total_tstep=t_steps)
+            simulate(flights,waypoints,stat_obstructions,mov_obstructions,field,show_single_clip,total_tstep=t_steps)
 
+            # save objects in simulation
+            if show_single_clip:
+                sim_objects = store_objects(sim_objects_container, field, flights, waypoints, stat_obstructions, mov_obstructions)
             # put functions to calculate any desired quantities here
             # e.g. flows+=[cal_flow(15,fr1)]
             flows += [cal_flow(t_steps, flights)]
@@ -103,3 +128,10 @@ if __name__ == '__main__':
         total_flows+=[flows]
         all_avg_transit_time+=[avg_transit_time]
     # avg_flow = sum(flows) / len(flows)
+
+
+'''TO DO
+#1 Instantiate variable (probably dictionary or list) to store different objects created in single simulation---- done
+#2 Store initial potential field of objects in instance attributes---- done
+#3 Add parameter for user to restrict influence of potential fields
+'''
