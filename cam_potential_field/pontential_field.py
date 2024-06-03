@@ -1,13 +1,12 @@
 import math
 import os
 import random
-import time
 
 import numpy as np
 from matplotlib import pyplot as plt
 
 from ga_air_nav import visualizations as vs
-from cam_air_nav.cam_airnav_mod import Air_Object, Free_Air_Object, avg_trans_time, col_dept, col_dept_sing,path_plots
+from cam_air_nav.cam_airnav_mod import Air_Object, Free_Air_Object, avg_trans_time, col_dept, col_dept_sing
 from cam_air_nav.cam_airnavconfrules import obj_radius, conv_to_2d
 
 
@@ -23,6 +22,7 @@ class Obj_Field(Air_Object):
          self.max_pot = max_pot
          self.pot = 0
          self.fld_pot = res_field(self.g_size,mp_pos,max_pot)
+         self.base_fld_pot = tuple(self.fld_pot)
          self.tfp = []
 
 class Oth_Obj_Field(Free_Air_Object):
@@ -35,6 +35,7 @@ class Oth_Obj_Field(Free_Air_Object):
         self.max_pot = max_pot
         self.pot = 0
         self.fld_pot = res_field(self.g_size, mp_pos, max_pot)
+        self.base_fld_pot = tuple(self.fld_pot)
 
 class TMA:
     def __init__(self,row,column,max_pot,grid_size):
@@ -42,6 +43,7 @@ class TMA:
         self.g_size = [grid_size[1], grid_size[0]]
         self.max_pot = max_pot
         self.fld_pot = res_field(self.g_size,self.mp_pos,max_pot)
+        self.base_fld_pot = tuple(self.fld_pot)
         self.fld = []
         self.dens = 0
         self.tot_tstep = 0
@@ -50,12 +52,18 @@ class TMA:
         self.avg_transit_time = 0
         self.avg_vel_a = 0
         self.avg_vel_b = 0
+        self.sim_path_conf = {}
 
     def fd_dens(self,objs):
         self.dens=len(objs)/(self.g_size[0]*self.g_size[1])
 
-class Aircraft(Obj_Field):
+    def store_sim_path(self,field, flights, clip_no):
+        sim_clip = {}
+        sim_clip['field'] = tuple(field)
+        sim_clip['flight_path'] = tuple([flight.fp for flight in flights])
+        self.sim_path_conf[clip_no] = sim_clip
 
+class Aircraft(Obj_Field):
     def __init__(self,null_pont=False,**kwargs):
         super(Aircraft, self).__init__(**kwargs)
         # to create aircraft with completely zero potentials
@@ -214,7 +222,9 @@ def fl_paths(flights,total_tstep):
     pdes = swi_cord_elem(dests)
 
     if total_tstep==1:
-        path_plots(flights)
+        for fpath in flights:
+            fpath.flight_path()
+        # path_plots(flights)
         # handle duplicates in agg_pos
         for f in flights:
             con = []
@@ -224,8 +234,9 @@ def fl_paths(flights,total_tstep):
                     f.agg_pos = con
                     break
 
-    elif total_tstep>1:
-        path_plots(flights)
+    elif total_tstep>1 or total_tstep==0:
+        for fpath in flights:
+            fpath.flight_path()
 
 
 '''Create Field, Enter Potentials & Calc Resultant'''
@@ -326,6 +337,13 @@ def reslt_pot(pots):
 
 
 '''Collect Data'''
+# store objects
+def store_objects(store_container,*args):
+    objs=list(store_container.keys())
+    for n,k in enumerate(objs):
+        store_container[k]+=[args[n]]
+    return store_container
+
 def col_dest(tma,max_pot):
     dests = []
     for m in range(len(tma)):
@@ -593,33 +611,35 @@ def mov_obstr_sim(tma,objs,mov_obstructions,t_step):
     dests = []
     dests = sim_field_gen(tma, objs, mov_obstructions)
 
-def plot_vis(t_step,flights,tma):
+def plot_vis(t_step,tma):
     # plot visualization
-    fl_paths(flights, t_step)
-    xat = [i for i in range(len(tma[0].fld[0]))]
-    yat = [i for i in range(len(tma[0].fld))]
-    xal = [i + 1 for i in range(len(tma[0].fld[0]))]
-    yal = [i + 1 for i in range(len(tma[0].fld))]
+    xat = [i for i in range(len(tma[0]))]
+    yat = [i for i in range(len(tma))]
+    xal = [i + 1 for i in range(len(tma[0]))]
+    yal = [i + 1 for i in range(len(tma))]
     plt.xticks(xat, xal)
     plt.yticks(yat, yal)
     plt.tick_params(left=False, bottom=False, labelbottom=False, labelleft=False)
-    plt.imshow(np.array(tma[0].fld), cmap='binary')
+    plt.imshow(np.array(tma), cmap='binary')
     plt.colorbar()
     # plt.show()
     images_file = os.path.join(vs.image_dir, f'plot_{t_step}.png')
     plt.savefig(images_file)
     plt.close()
 
-def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_clip,clip_no,total_tstep=1):
+def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_clip,total_tstep=1):
     global dests,loc_tma
 
     col_dept(flights)
 
+    # values of tma are set in the sim_field_gen method
     objs = flights + waypoints + tma + stat_obstructions
     dests = sim_field_gen(tma[0],objs,mov_obstructions)
     # capture first movement
     if show_vis_clip:
-        plot_vis(0, flights, tma)
+        fl_paths(flights, 0)
+        tma[0].store_sim_path(tma[0].fld,flights,0)
+        # plot_vis(0, flights, tma)
 
     if total_tstep>1:
         for t in range(1,total_tstep+1):
@@ -641,7 +661,9 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_c
 
             # plot visualization
             if show_vis_clip:
-                plot_vis(t,flights,tma)
+                fl_paths(flights, t)
+                tma[0].store_sim_path(tma[0].fld,flights, t)
+                # plot_vis(t,flights,tma)
 
     t=0
     if total_tstep==1:
@@ -659,7 +681,9 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_c
 
             # plot visualization
             if show_vis_clip:
-                plot_vis(t, flights, tma)
+                pass
+                # tma[0].store_sim_path(flights, clip_no)
+                # plot_vis(t, flights, tma)
 
     # get field density
     tma[0].fd_dens(flights)
@@ -679,11 +703,12 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_c
     # set tma as a global variable loc_tma for further use acros the simulation
     loc_tma=tma[0]
     # create simulation video
-    if show_vis_clip:
-        vs.make_video(f'potential{clip_no}.mp4')
+    # if show_vis_clip:
+    #     vs.make_video(f'potential{clip_no}.mp4')
 
-def simulate(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_clip,clip_no, total_tstep=1):
+def simulate(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_clip,total_tstep=1):
     # initialize visualization
     vs.clear_image_folder(vs.image_dir)
 
-    sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_clip,clip_no,total_tstep)
+    sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_clip,total_tstep)
+
