@@ -15,11 +15,11 @@ def create_video_vis(sim_field):
             plt.plot(x,y)
         fld=clips[k]['field']
         plot_vis(k,fld)
-    vs.make_video(f'potential.mp4')
+    vs.make_video('potential.mp4')
 
 sim_objects={}
-def make_video(video_no):
-    sim_field=sim_objects['fields'][video_no-1][0]
+def make_sim_video(video_no):
+    sim_field=sim_objects['field'][video_no-1][0]
     create_video_vis(sim_field)
 '''
 Create flight, waypoint, static obstructions and mobile obstructions objects f1,f2,f3,w1,w2,sob1,mob1...
@@ -58,7 +58,7 @@ show_vis_clip variable is used to set how many sims to run at a given time and w
 if __name__ == '__main__':
     sim_objects_container={'field':[],'flights':[],'waypoints':[],'static_obstructions':[],'moving_obstructions':[]}
 
-    t_steps = 4
+    t_steps = 2
     clip_no = 0
     grid_size = [20, 25]
     show_vis_clip = [True, False]
@@ -128,10 +128,4 @@ if __name__ == '__main__':
         total_flows+=[flows]
         all_avg_transit_time+=[avg_transit_time]
     # avg_flow = sum(flows) / len(flows)
-
-
-'''TO DO
-#1 Instantiate variable (probably dictionary or list) to store different objects created in single simulation---- done
-#2 Store initial potential field of objects in instance attributes---- done
-#3 Add parameter for user to restrict influence of potential fields
-'''
+    make_sim_video(2)
