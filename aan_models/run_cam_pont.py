@@ -6,7 +6,7 @@ from pontential_field import Aircraft, Waypoint, Stat_Obstruction,Mov_Obstructio
                             plot_vis
 
 
-def create_video_vis(sim_field):
+def create_clips_vis(sim_field):
     clips=sim_field.sim_path_conf
     clips_name=list(clips.keys())
     for k in clips_name:
@@ -15,12 +15,12 @@ def create_video_vis(sim_field):
             plt.plot(x,y)
         fld=clips[k]['field']
         plot_vis(k,fld)
-    vs.make_video('potential.mp4')
 
 sim_objects={}
 def make_sim_video(video_no):
     sim_field=sim_objects['field'][video_no-1][0]
-    create_video_vis(sim_field)
+    create_clips_vis(sim_field)
+    vs.make_video('potential.mp4')
 '''
 Create flight, waypoint, static obstructions and mobile obstructions objects f1,f2,f3,w1,w2,sob1,mob1...
 and include all objects needed in respective experiment list
@@ -58,7 +58,7 @@ show_vis_clip variable is used to set how many sims to run at a given time and w
 if __name__ == '__main__':
     sim_objects_container={'field':[],'flights':[],'waypoints':[],'static_obstructions':[],'moving_obstructions':[]}
 
-    t_steps = 2
+    t_steps = 15
     clip_no = 0
     grid_size = [20, 25]
     show_vis_clip = [True, False]
@@ -69,7 +69,7 @@ if __name__ == '__main__':
 
     # declare variables for aircraft generation during repetition of simulation
     no_rand_aircrafts=[3, 2, 1, 2]
-    no_aircrafts_from_sides=[[1,0,0,1],[2,2,2,1],[0,0,0,0],[1,1,1,1]]
+    no_aircrafts_from_sides=[[1,0,0,1],[2,2,2,1],[4,0,1,0],[1,1,1,1]]
     max_size=[3,2,4,2]
     max_pot=[5,4,6,10]
 
@@ -83,27 +83,27 @@ if __name__ == '__main__':
             clip_no = (n*len(show_vis_clip))+no
             # clip_no+=1 if show_single_clip else clip_no
 
-            tma = TMA(row=6,column=6,max_pot=50,grid_size=grid_size)
+            tma = TMA(row=6,column=6,max_pot=200,grid_size=grid_size)
 
-            # f1 = Aircraft(row=5,column=9,max_pot=9,grid_size=grid_size,size=1,plt_color='b',null_pont=True)
-            # f2 = Aircraft(row=3,column=5, max_pot=10, grid_size=grid_size, size=1,plt_color='r')
-            # f3 = Aircraft(row=8,column=14, max_pot=7, grid_size=grid_size, size=2,plt_color='g')
-            # f4 = Aircraft(row=10, column=9, max_pot=5, grid_size=grid_size, size=2, plt_color='w')
+            # f1 = Aircraft(row=5,column=9,max_pot=9,grid_size=grid_size,size=1,plt_color='b',inf_rad=4,null_pont=True)
+            # f2 = Aircraft(row=3,column=5, max_pot=10, grid_size=grid_size, size=1, inf_rad=4,plt_color='r')
+            # f3 = Aircraft(row=8,column=14, max_pot=7, grid_size=grid_size, size=2, inf_rad=4, plt_color='g')
+            # f4 = Aircraft(row=10, column=9, max_pot=5, grid_size=grid_size, size=2, inf_rad=4, plt_color='w')
             #
             # fr1 = multiple_aircrafts(rand_aircrafts=50,max_pot=5,grid_size=grid_size,max_size=2,plt_colors=['c','r','m','y'],null_pont=False)
             # fr2 = multiple_aircrafts(max_pot=5, grid_size=grid_size, max_size=2, plt_colors=['c', 'r', 'm', 'y'],
             #                         start_sides={'up':3,'down':1,'left':2,'right':1}, null_pont=False)
 
             # dynamic declaration of aircrafts for repetitive simulations only applies to variables fr3 & fr4
-            fr3 = multiple_aircrafts(rand_aircrafts=nra,max_size=ms,max_pot=mp,grid_size=grid_size,plt_colors=['w','g','m','y'],null_pont=False)
-            fr4 = multiple_aircrafts(max_pot=mp, grid_size=grid_size, max_size=ms, plt_colors=['b', 'r', 'm', 'g'],
+            fr3 = multiple_aircrafts(rand_aircrafts=nra,max_size=ms,max_pot=mp,grid_size=grid_size,plt_colors=['w','g','m','y'],inf_rad=[4,5],null_pont=False)
+            fr4 = multiple_aircrafts(max_pot=mp, grid_size=grid_size, max_size=ms, plt_colors=['b', 'r', 'm', 'g'],inf_rad=[3,5],
                                     start_sides={'up':nas[0],'down':nas[1],'left':nas[2],'right':nas[3]}, null_pont=False)
 
-            w1 = Waypoint(row=6,column=11,max_pot=6,grid_size=grid_size,size=2)
+            w1 = Waypoint(row=6,column=11,max_pot=6,grid_size=grid_size,size=2,inf_rad=5)
 
-            sob1 = Stat_Obstruction(row=7,column=3,max_pot=8,grid_size=grid_size,size=1)
+            sob1 = Stat_Obstruction(row=7,column=3,max_pot=8,grid_size=grid_size,size=1,inf_rad=4)
 
-            mob1 = Mov_Obstruction(row=7, column=3, max_pot=8, grid_size=grid_size, size=1, mob_rate=5, mob_span=1, mut_rate=7, mut_span=3)
+            mob1 = Mov_Obstruction(row=7, column=3, max_pot=8, grid_size=grid_size, size=1, inf_rad=3, mob_rate=5, mob_span=1, mut_rate=7, mut_span=3)
 
             field = [tma]
             flights = fr3 + fr4
@@ -128,5 +128,4 @@ if __name__ == '__main__':
         total_flows+=[flows]
         all_avg_transit_time+=[avg_transit_time]
     # avg_flow = sum(flows) / len(flows)
-    make_sim_video(2)
-  
+    # make_sim_video(2)
