@@ -13,7 +13,7 @@ from cam_airnavconfrules import obj_radius, conv_to_2d
 '''Object Field Classes'''
 class Obj_Field(Air_Object):
 
-     def __init__(self,row,column,max_pot,grid_size,size,plt_color):
+     def __init__(self,row,column,max_pot,grid_size,size,inf_rad,plt_color):
          mp_pos = [column, row]
          super(Obj_Field, self).__init__([mp_pos[0],mp_pos[1]],[0,0],size)
 
@@ -21,21 +21,39 @@ class Obj_Field(Air_Object):
          self.color = plt_color
          self.max_pot = max_pot
          self.pot = 0
-         self.fld_pot = res_field(self.g_size,mp_pos,max_pot)
-         self.base_fld_pot = tuple(self.fld_pot)
+         self.gen_fld_pot = tuple([res_field(self.g_size, mp_pos, max_pot)])[0]  # field potential before applying radius of influence
+         self.inf_rad = inf_rad
+         self.base_pos = tuple([mp_pos])[0]
+         self.fld_pot = self.res_influence_field()
+         self.base_fld_pot = tuple([self.fld_pot])[0]
          self.tfp = []
+
+     def res_influence_field(self):
+         fld_pot = self.gen_fld_pot
+         influence_field = obj_radius(self.inf_rad, self.base_pos)
+         new_fld_pot = [[0 if [row, col] not in influence_field else fld_pot[row][col] for col in range(len(fld_pot[0]))] for row in range(len(fld_pot))]
+         return new_fld_pot
 
 class Oth_Obj_Field(Free_Air_Object):
 
-    def __init__(self,row,column,max_pot,grid_size,size):
+    def __init__(self,row,column,max_pot,grid_size,size,inf_rad):
         mp_pos = [column, row]
         super(Oth_Obj_Field, self).__init__(size,[mp_pos[0], mp_pos[1]])
 
         self.g_size = [grid_size[1],grid_size[0]]
         self.max_pot = max_pot
         self.pot = 0
-        self.fld_pot = res_field(self.g_size, mp_pos, max_pot)
-        self.base_fld_pot = tuple(self.fld_pot)
+        self.gen_fld_pot = tuple([res_field(self.g_size, mp_pos, max_pot)])[0] #field potential before applying radius of influence
+        self.inf_rad = inf_rad
+        self.base_pos = tuple([mp_pos])[0]
+        self.fld_pot = self.res_influence_field()
+        self.base_fld_pot = tuple([self.fld_pot])[0]
+
+    def res_influence_field(self):
+        fld_pot=self.gen_fld_pot
+        influence_field = obj_radius(self.inf_rad,self.base_pos)
+        new_fld_pot = [[0 if [row, col] not in influence_field else fld_pot[row][col] for col in range(len(fld_pot[0]))]for row in range(len(fld_pot))]
+        return new_fld_pot
 
 class TMA:
     def __init__(self,row,column,max_pot,grid_size):
@@ -511,7 +529,7 @@ def rand_acraft_info():
     global acraft_info
     return acraft_info
 
-def rand_ac_arg(grid_size,max_pot,max_size,plt_colors,side=None):
+def rand_ac_arg(grid_size,max_pot,max_size,plt_colors,inf_rad,side=None):
     row=None
     col=None
     if side=='up':
@@ -532,38 +550,39 @@ def rand_ac_arg(grid_size,max_pot,max_size,plt_colors,side=None):
     mp = random.randint(max_pot // 2, max_pot)
     ms = random.randint(1, max_size)
     pc = random.choice(plt_colors)
-    return row,col,mp,ms,pc
+    ir = random.choice(inf_rad)
+    return row,col,mp,ms,pc,ir
 
 # create aircrafts by category, this function is used to create multiple aircrafts
-def cat_aircrafts(no_aircrafts,grid_size, max_pot, max_size, plt_colors, side=None, null_pont=False):
+def cat_aircrafts(no_aircrafts,grid_size, max_pot, max_size, plt_colors, inf_rad, side=None, null_pont=False):
     global acraft_info,a_cord
     acrafts=[]
     a_info=[]
     for _ in range(no_aircrafts):
         # one cell to one aircraft
         while True:
-            row, col, mp, ms, pc = rand_ac_arg(grid_size, max_pot, max_size, plt_colors, side)
+            row, col, mp, ms, pc, ir = rand_ac_arg(grid_size, max_pot, max_size, plt_colors, inf_rad, side)
             if [row, col] not in a_cord:
                 a_cord += [[row, col]]
                 acrafts += [Aircraft(row=row, column=col, max_pot=mp, grid_size=grid_size, size=ms, plt_color=pc,
-                                     null_pont=null_pont)]
-                a_info += [{'row': row, 'column': col, 'max_pot': mp, 'max_size': ms, 'plt_color': pc}]
+                                     inf_rad=ir, null_pont=null_pont)]
+                a_info += [{'row': row, 'column': col, 'max_pot': mp, 'max_size': ms, 'plt_color': pc, 'inf_rad':ir}]
                 break
     acraft_info += a_info
     return acrafts
 
-def multiple_aircrafts(max_pot,grid_size,max_size,plt_colors,rand_aircrafts=None,start_sides=None,null_pont=False):
+def multiple_aircrafts(max_pot,grid_size,max_size,plt_colors,inf_rad,rand_aircrafts=None,start_sides=None,null_pont=False):
     acrafts=[]
     # check starting sides declared and number of starting sides for given aircrafts
     if start_sides:
         sides = start_sides.keys()
         for side in sides:
             no_aircrafts=start_sides[side]
-            acrafts+=cat_aircrafts(no_aircrafts,grid_size,max_pot,max_size,plt_colors,side,null_pont)
+            acrafts+=cat_aircrafts(no_aircrafts,grid_size,max_pot,max_size,plt_colors,inf_rad,side,null_pont)
 
     # create random aircrafts from any sides
     if rand_aircrafts:
-        acrafts+=cat_aircrafts(rand_aircrafts, grid_size, max_pot, max_size, plt_colors, null_pont)
+        acrafts+=cat_aircrafts(rand_aircrafts, grid_size, max_pot, max_size, plt_colors, inf_rad, null_pont)
 
     return acrafts
 
@@ -610,6 +629,8 @@ def mov_obstr_sim(tma,objs,mov_obstructions,t_step):
             mob.mut_obs()
     dests = []
     dests = sim_field_gen(tma, objs, mov_obstructions)
+
+
 
 def plot_vis(t_step,tma):
     # plot visualization
