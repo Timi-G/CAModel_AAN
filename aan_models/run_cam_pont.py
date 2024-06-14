@@ -1,6 +1,6 @@
 from matplotlib import pyplot as plt
 
-from ga_air_nav import visualizations as vs
+import visualizations as vs
 from pontential_field import Aircraft, Waypoint, Stat_Obstruction,Mov_Obstruction,\
                             TMA, simulate, multiple_aircrafts, cal_flow, store_objects,disp_ran_acraft_info, rand_acraft_info,\
                             plot_vis, a_cord
