@@ -1,9 +1,9 @@
 from matplotlib import pyplot as plt
 
-import visualizations as vs
+from ga_air_nav import visualizations as vs
 from pontential_field import Aircraft, Waypoint, Stat_Obstruction,Mov_Obstruction,\
                             TMA, simulate, multiple_aircrafts, cal_flow, store_objects,disp_ran_acraft_info, rand_acraft_info,\
-                            plot_vis
+                            plot_vis, a_cord
 
 
 def create_clips_vis(sim_field):
@@ -58,9 +58,9 @@ show_vis_clip variable is used to set how many sims to run at a given time and w
 if __name__ == '__main__':
     sim_objects_container={'field':[],'flights':[],'waypoints':[],'static_obstructions':[],'moving_obstructions':[]}
 
-    t_steps = 15
+    t_steps = 3
     clip_no = 0
-    grid_size = [20, 25]
+    grid_size = [40, 25]
     show_vis_clip = [True, False]
     # try the convention:
     # show_vis_clip = [True] * 3 + [True] * 5 + [False] * 2
@@ -68,10 +68,10 @@ if __name__ == '__main__':
     all_avg_transit_time=[]
 
     # declare variables for aircraft generation during repetition of simulation
-    no_rand_aircrafts=[3, 2, 1, 2]
-    no_aircrafts_from_sides=[[1,0,0,1],[2,2,2,1],[4,0,1,0],[1,1,1,1]]
-    max_size=[3,2,4,2]
-    max_pot=[5,4,6,10]
+    no_rand_aircrafts=[1, 1, 1, 1]
+    no_aircrafts_from_sides=[[20,0,0,1],[20,1,0,1],[20,0,0,1],[20,1,1,1]]
+    max_size=[1,1,1,1]
+    max_pot=[1,1,1,1]
 
     for n,(nra,nas,ms,mp) in enumerate(zip(no_rand_aircrafts,no_aircrafts_from_sides,max_size,max_pot),0):
         # define a collector for desired quantities here
@@ -83,7 +83,7 @@ if __name__ == '__main__':
             clip_no = (n*len(show_vis_clip))+no
             # clip_no+=1 if show_single_clip else clip_no
 
-            tma = TMA(row=6,column=6,max_pot=200,grid_size=grid_size)
+            tma = TMA(row=39,column=13,max_pot=500,grid_size=grid_size)
 
             # f1 = Aircraft(row=5,column=9,max_pot=9,grid_size=grid_size,size=1,plt_color='b',inf_rad=4,null_pont=True)
             # f2 = Aircraft(row=3,column=5, max_pot=10, grid_size=grid_size, size=1, inf_rad=4,plt_color='r')
@@ -99,17 +99,22 @@ if __name__ == '__main__':
             fr4 = multiple_aircrafts(max_pot=mp, grid_size=grid_size, max_size=ms, plt_colors=['b', 'r', 'm', 'g'],inf_rad=[3,5],
                                     start_sides={'up':nas[0],'down':nas[1],'left':nas[2],'right':nas[3]}, null_pont=False)
 
-            w1 = Waypoint(row=6,column=11,max_pot=6,grid_size=grid_size,size=2,inf_rad=5)
+            w1 = Waypoint(row=16, column=5, max_pot=7, grid_size=grid_size, size=3, inf_rad=5)
+            w2 = Waypoint(row=15, column=20, max_pot=7, grid_size=grid_size, size=3, inf_rad=5)
+            w3 = Waypoint(row=25, column=5, max_pot=7, grid_size=grid_size, size=3, inf_rad=5)
+            w4 = Waypoint(row=27, column=20, max_pot=7, grid_size=grid_size, size=3, inf_rad=5)
 
-            sob1 = Stat_Obstruction(row=7,column=3,max_pot=8,grid_size=grid_size,size=1,inf_rad=4)
+            sob1 = Stat_Obstruction(row=8, column=13, max_pot=12, grid_size=grid_size,size=1,inf_rad=4)
 
-            mob1 = Mov_Obstruction(row=7, column=3, max_pot=8, grid_size=grid_size, size=1, inf_rad=3, mob_rate=5, mob_span=1, mut_rate=7, mut_span=3)
+            mob1 = Mov_Obstruction(row=20, column=5, max_pot=17, grid_size=grid_size, size=1, inf_rad=3, mob_rate=10, mob_span=1, mut_rate=2, mut_span=2)
+            mob2 = Mov_Obstruction(row=25, column=19, max_pot=18, grid_size=grid_size, size=1, inf_rad=3, mob_rate=10,
+                                   mob_span=1, mut_rate=2, mut_span=2)
 
             field = [tma]
             flights = fr3 + fr4
-            waypoints = [w1]
+            waypoints = [w1,w2,w3,w4]
             stat_obstructions = [sob1]
-            mov_obstructions = [mob1]
+            mov_obstructions = [mob1,mob2]
 
             simulate(flights,waypoints,stat_obstructions,mov_obstructions,field,show_single_clip,total_tstep=t_steps)
 
@@ -121,11 +126,11 @@ if __name__ == '__main__':
             flows += [cal_flow(t_steps, flights)]
 
             # get transit time for repetitions
-            avg_transit_time+=[field[0].avg_transit_time]
+            avg_transit_time += [field[0].avg_transit_time]
 
         # find average of quantities here
         # e.g. avg_flow=sum(flows)/len(flows)
-        total_flows+=[flows]
-        all_avg_transit_time+=[avg_transit_time]
+        total_flows += [flows]
+        all_avg_transit_time += [avg_transit_time]
     # avg_flow = sum(flows) / len(flows)
     # make_sim_video(2)
