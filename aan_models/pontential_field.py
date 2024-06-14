@@ -529,45 +529,63 @@ def rand_acraft_info():
     global acraft_info
     return acraft_info
 
-def rand_ac_arg(grid_size,max_pot,max_size,plt_colors,inf_rad,side=None):
-    row=None
-    col=None
-    if side=='up':
-        row = 1
-        col = random.randint(1, grid_size[1])
-    if side=='down':
-        row = grid_size[0]
-        col = random.randint(1, grid_size[1])
-    if side=='left':
-        row = random.randint(1, grid_size[0])
-        col = 1
-    if side=='right':
-        row = random.randint(1, grid_size[0])
-        col = grid_size[1]
-    if not side:
-        row = random.randint(1, grid_size[0])
-        col = random.randint(1, grid_size[1])
-    mp = random.randint(max_pot // 2, max_pot)
-    ms = random.randint(1, max_size)
-    pc = random.choice(plt_colors)
-    ir = random.choice(inf_rad)
-    return row,col,mp,ms,pc,ir
+def ac_cords_arg(no_objs,grid_size,side=None):
+    cords = None
+    if side == 'up':
+        cords = ac_poss_pos(no_objs,grid_size[1],grid_size[0],1,"vertical")
+    elif side == 'down':
+        cords = ac_poss_pos(no_objs, grid_size[1], grid_size[0], grid_size[0], "vertical")
+    elif side == 'left':
+        cords = ac_poss_pos(no_objs, grid_size[0], grid_size[1], 1, "horizontal")
+    elif side == 'right':
+        cords = ac_poss_pos(no_objs, grid_size[0], grid_size[1], grid_size[1], "horizontal")
+    elif not side:
+        no=grid_size[0]*grid_size[1]
+        available_cords = ac_poss_pos(no, grid_size[0], grid_size[1], 1, "horizontal")
+        cords = random.choices(available_cords,k=no_objs)
+    return cords
+
+# define possible positions of aircraft
+# line represents rows when side is up and down, it represents columns when side is left and right
+def ac_poss_pos(no_objs,grid_side_size,total_lines,start_line,orientation):
+    global a_cord
+    occup_cells=a_cord
+
+    line=0
+    cell=0
+    poss_pos=[]
+    for l in range(1,total_lines+1):
+        for c in range(1,grid_side_size+1):
+            line = start_line-l if start_line!=1 else l
+            cell = c
+            if orientation == "vertical" and not [line,cell] in occup_cells:
+                poss_pos+=[[line,cell]]
+            elif orientation == "horizontal" and not [line,cell] in occup_cells:
+                poss_pos+=[[cell,line]]
+
+            if no_objs==len(poss_pos):
+                return poss_pos
+
+    return poss_pos
 
 # create aircrafts by category, this function is used to create multiple aircrafts
 def cat_aircrafts(no_aircrafts,grid_size, max_pot, max_size, plt_colors, inf_rad, side=None, null_pont=False):
     global acraft_info,a_cord
     acrafts=[]
     a_info=[]
-    for _ in range(no_aircrafts):
+    cords = ac_cords_arg(no_aircrafts,grid_size,side)
+    for n,_ in enumerate(range(no_aircrafts)):
         # one cell to one aircraft
-        while True:
-            row, col, mp, ms, pc, ir = rand_ac_arg(grid_size, max_pot, max_size, plt_colors, inf_rad, side)
-            if [row, col] not in a_cord:
-                a_cord += [[row, col]]
-                acrafts += [Aircraft(row=row, column=col, max_pot=mp, grid_size=grid_size, size=ms, plt_color=pc,
-                                     inf_rad=ir, null_pont=null_pont)]
-                a_info += [{'row': row, 'column': col, 'max_pot': mp, 'max_size': ms, 'plt_color': pc, 'inf_rad':ir}]
-                break
+        row = cords[n][0]
+        col = cords[n][1]
+        mp = random.randint(max_pot // 2, max_pot)
+        ms = random.randint(1, max_size)
+        pc = random.choice(plt_colors)
+        ir = random.choice(inf_rad)
+        a_cord += [[row, col]]
+        acrafts += [Aircraft(row=row, column=col, max_pot=mp, grid_size=grid_size, size=ms, plt_color=pc,
+                             inf_rad=ir, null_pont=null_pont)]
+        a_info += [{'row': row, 'column': col, 'max_pot': mp, 'max_size': ms, 'plt_color': pc, 'inf_rad':ir}]
     acraft_info += a_info
     return acrafts
 
@@ -583,7 +601,6 @@ def multiple_aircrafts(max_pot,grid_size,max_size,plt_colors,inf_rad,rand_aircra
     # create random aircrafts from any sides
     if rand_aircrafts:
         acrafts+=cat_aircrafts(rand_aircrafts, grid_size, max_pot, max_size, plt_colors, inf_rad, null_pont)
-
     return acrafts
 
 
@@ -652,7 +669,6 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_c
     global dests,loc_tma
 
     col_dept(flights)
-
     # values of tma are set in the sim_field_gen method
     objs = flights + waypoints + tma + stat_obstructions
     dests = sim_field_gen(tma[0],objs,mov_obstructions)
@@ -661,7 +677,6 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_c
         fl_paths(flights, 0)
         tma[0].store_sim_path(tma[0].fld,flights,0)
         # plot_vis(0, flights, tma)
-
     if total_tstep>1:
         for t in range(1,total_tstep+1):
             mov_obstr_sim(tma[0],objs,mov_obstructions,t+1)
@@ -679,7 +694,6 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_c
                     conf_resl(tma[0].fld,flights,flight)
                 flight.collect_pos()
                 flight.collect_distn()
-
             # plot visualization
             if show_vis_clip:
                 fl_paths(flights, t)
@@ -728,8 +742,10 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_c
     #     vs.make_video(f'potential{clip_no}.mp4')
 
 def simulate(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_clip,total_tstep=1):
+    global a_cord
+    a_cord = []
+
     # initialize visualization
     vs.clear_image_folder(vs.image_dir)
 
     sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_clip,total_tstep)
-
