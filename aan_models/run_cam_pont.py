@@ -58,7 +58,7 @@ show_vis_clip variable is used to set how many sims to run at a given time and w
 if __name__ == '__main__':
     sim_objects_container={'field':[],'flights':[],'waypoints':[],'static_obstructions':[],'moving_obstructions':[]}
 
-    t_steps = 3
+    t_steps = 20
     clip_no = 0
     grid_size = [40, 25]
     show_vis_clip = [True, False]
