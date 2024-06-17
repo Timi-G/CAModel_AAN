@@ -6,11 +6,26 @@ from pontential_field import Aircraft, Waypoint, Stat_Obstruction,Mov_Obstructio
                             plot_vis, a_cord
 
 
+# object parameter can be 'field', 'flights', 'waypoints', 'mov_obstruction', 'stat_obstruction'
+# repetition parameter is experiment you wish to view image from, it takes integer argument
+# obj_no is an integer argument that represents the series number of particular object to be shown
+# base_potential is a boolean argument to determine if image shown are the initial potential field or potential fields during the simulation
+def show_field_image(object,repetition,obj_no,t_step=0,base_potential=True):
+    if base_potential:
+        fld_pot=sim_objects[object][repetition][obj_no].base_fld_pot
+    else:
+        if object=='field':
+            fld_pot=sim_objects['field'][repetition][0].sim_path_conf[t_step][object][0]
+        elif object=='flights':
+            fld_pot = sim_objects['field'][repetition][0].sim_path_conf[t_step][object][obj_no]
+    plt.imshow(fld_pot)
+    plt.show()
+
 def create_clips_vis(sim_field):
     clips=sim_field.sim_path_conf
     clips_name=list(clips.keys())
     for k in clips_name:
-        for fp in clips[k]['flight_path']:
+        for fp in clips[k]['flights']:
             x,y=fp
             plt.plot(x,y)
         fld=clips[k]['field']
@@ -56,10 +71,9 @@ show_vis_clip variable is used to set how many sims to run at a given time and w
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    sim_objects_container={'field':[],'flights':[],'waypoints':[],'static_obstructions':[],'moving_obstructions':[]}
+    sim_objects_container={'field':[],'flights':[],'waypoints':[],'stat_obstructions':[],'mov_obstructions':[]}
 
-    t_steps = 20
-    clip_no = 0
+    t_steps = 5
     grid_size = [40, 25]
     show_vis_clip = [True, False]
     # try the convention:
@@ -69,23 +83,23 @@ if __name__ == '__main__':
 
     # declare variables for aircraft generation during repetition of simulation
     no_rand_aircrafts=[1, 1, 1, 1]
-    no_aircrafts_from_sides=[[20,0,0,1],[20,1,0,1],[20,0,0,1],[20,1,1,1]]
+    no_aircrafts_from_sides=[[2,0,0,1],[2,1,0,1],[2,0,0,1],[2,1,1,1]]
     max_size=[1,1,1,1]
     max_pot=[1,1,1,1]
 
-    for n,(nra,nas,ms,mp) in enumerate(zip(no_rand_aircrafts,no_aircrafts_from_sides,max_size,max_pot),0):
+    for nra,nas,ms,mp in zip(no_rand_aircrafts,no_aircrafts_from_sides,max_size,max_pot):
         # define a collector for desired quantities here
         # e.g. flows=[]
         flows = []
         avg_transit_time = []
-        for no, show_single_clip in enumerate(show_vis_clip, 1):
+        for show_single_clip in show_vis_clip:
             '''clip_no is index of video visualization'''
-            clip_no = (n*len(show_vis_clip))+no
+            # clip_no = (n*len(show_vis_clip))+no
             # clip_no+=1 if show_single_clip else clip_no
 
             tma = TMA(row=39,column=13,max_pot=500,grid_size=grid_size)
 
-            # f1 = Aircraft(row=5,column=9,max_pot=9,grid_size=grid_size,size=1,plt_color='b',inf_rad=4,null_pont=True)
+            f1 = Aircraft(row=5,column=9,max_pot=9,grid_size=grid_size,size=1,plt_color='b',inf_rad=4,null_pont=True)
             # f2 = Aircraft(row=3,column=5, max_pot=10, grid_size=grid_size, size=1, inf_rad=4,plt_color='r')
             # f3 = Aircraft(row=8,column=14, max_pot=7, grid_size=grid_size, size=2, inf_rad=4, plt_color='g')
             # f4 = Aircraft(row=10, column=9, max_pot=5, grid_size=grid_size, size=2, inf_rad=4, plt_color='w')
@@ -111,7 +125,7 @@ if __name__ == '__main__':
                                    mob_span=1, mut_rate=2, mut_span=2)
 
             field = [tma]
-            flights = fr3 + fr4
+            flights = fr3+fr4+[f1]
             waypoints = [w1,w2,w3,w4]
             stat_obstructions = [sob1]
             mov_obstructions = [mob1,mob2]
