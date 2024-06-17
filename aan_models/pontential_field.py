@@ -31,7 +31,7 @@ class Obj_Field(Air_Object):
      def res_influence_field(self):
          fld_pot = self.gen_fld_pot
          influence_field = obj_radius(self.inf_rad, self.base_pos)
-         new_fld_pot = [[0 if [row, col] not in influence_field else fld_pot[row][col] for col in range(len(fld_pot[0]))] for row in range(len(fld_pot))]
+         new_fld_pot = [[0 if [col, row] not in influence_field else fld_pot[row][col] for col in range(len(fld_pot[0]))] for row in range(len(fld_pot))]
          return new_fld_pot
 
 class Oth_Obj_Field(Free_Air_Object):
@@ -52,7 +52,7 @@ class Oth_Obj_Field(Free_Air_Object):
     def res_influence_field(self):
         fld_pot=self.gen_fld_pot
         influence_field = obj_radius(self.inf_rad,self.base_pos)
-        new_fld_pot = [[0 if [row, col] not in influence_field else fld_pot[row][col] for col in range(len(fld_pot[0]))]for row in range(len(fld_pot))]
+        new_fld_pot = [[0 if [col, row] not in influence_field else fld_pot[row][col] for col in range(len(fld_pot[0]))]for row in range(len(fld_pot))]
         return new_fld_pot
 
 class TMA:
@@ -78,7 +78,7 @@ class TMA:
     def store_sim_path(self,field, flights, clip_no):
         sim_clip = {}
         sim_clip['field'] = tuple(field)
-        sim_clip['flight_path'] = tuple([flight.fp for flight in flights])
+        sim_clip['flights'] = tuple([flight.fp for flight in flights])
         self.sim_path_conf[clip_no] = sim_clip
 
 class Aircraft(Obj_Field):
@@ -551,8 +551,6 @@ def ac_poss_pos(no_objs,grid_side_size,total_lines,start_line,orientation):
     global a_cord
     occup_cells=a_cord
 
-    line=0
-    cell=0
     poss_pos=[]
     for l in range(1,total_lines+1):
         for c in range(1,grid_side_size+1):
@@ -565,7 +563,6 @@ def ac_poss_pos(no_objs,grid_side_size,total_lines,start_line,orientation):
 
             if no_objs==len(poss_pos):
                 return poss_pos
-
     return poss_pos
 
 # create aircrafts by category, this function is used to create multiple aircrafts
@@ -596,11 +593,13 @@ def multiple_aircrafts(max_pot,grid_size,max_size,plt_colors,inf_rad,rand_aircra
         sides = start_sides.keys()
         for side in sides:
             no_aircrafts=start_sides[side]
-            acrafts+=cat_aircrafts(no_aircrafts,grid_size,max_pot,max_size,plt_colors,inf_rad,side,null_pont)
+            if no_aircrafts:
+                acrafts+=cat_aircrafts(no_aircrafts,grid_size,max_pot,max_size,plt_colors,inf_rad,side,null_pont)
 
     # create random aircrafts from any sides
     if rand_aircrafts:
         acrafts+=cat_aircrafts(rand_aircrafts, grid_size, max_pot, max_size, plt_colors, inf_rad, null_pont)
+
     return acrafts
 
 
@@ -650,6 +649,9 @@ def mov_obstr_sim(tma,objs,mov_obstructions,t_step):
 
 
 def plot_vis(t_step,tma):
+    # initialize visualization
+    vs.clear_image_folder(vs.image_dir)
+
     # plot visualization
     xat = [i for i in range(len(tma[0]))]
     yat = [i for i in range(len(tma))]
@@ -744,8 +746,5 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_c
 def simulate(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_clip,total_tstep=1):
     global a_cord
     a_cord = []
-
-    # initialize visualization
-    vs.clear_image_folder(vs.image_dir)
 
     sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_clip,total_tstep)
