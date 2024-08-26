@@ -1,13 +1,15 @@
-import math
 import os
 import random
 
 import numpy as np
 from matplotlib import pyplot as plt
 
+from optimization import best_path
+from pont_functions import change_anydim_lst_sign,change_to_zero,change_sign,swi_cord_elem,ac_movement,nxt_pos
+
 import visualizations as vs
-from cam_airnav_mod import Air_Object, Free_Air_Object, avg_trans_time, col_dept, col_dept_sing
-from cam_airnavconfrules import obj_radius, conv_to_2d
+from cam_airnav_mod import Air_Object, Free_Air_Object, avg_trans_time, col_dept
+from cam_airnavconfrules import obj_radius
 
 
 '''Object Field Classes'''
@@ -158,73 +160,8 @@ dests=[]
 acraft_info=[]
 a_cord=[]
 
-'''Abstract Modifiers/Correctors'''
-# restrict magnitude of elements of a list within a range
-def restrict_num(original_lst,lst,max_change):
-    nlist = []
-    # get indexes of elements that are out of range
-    for n, ol, l in enumerate(zip(original_lst, lst)):
-        p = l
-        while p-ol > max_change or ol-p < max_change:
-            p = l
-            p = random.choice([p-1, p+1])
-        nlist += [p]
 
-# switch row & col to y & x respect.
-def swi_cord_elem(cord):
-    if isinstance(cord[0],list):
-        ncord=[[cd[1],cd[0]] for cd in cord]
-    else:
-        ncord=[cord[1],cord[0]]
-    return ncord
-
-# get depth of list in a list_object
-def no_lsts_in_lsts(lst):
-    dlst=f'{lst}'
-    no=len(dlst)-len(dlst.lstrip('['))
-    return no
-
-def change_to_zero(num):
-    num=0*num
-    return num
-
-def change_sign(num):
-    num=-1*num
-    return num
-
-def change_lst_sign(lst,func_change):
-    li=[func_change(l) for l in lst]
-    return li
-
-# change polarity of elements in a list
-# correction of obstruction potential field
-def change_anydim_lst_sign(lst,func_change):
-    li = []
-
-    def pont_corr(lst):
-        li=[]
-        if not isinstance(lst[0], list):
-            li += [change_lst_sign(lst,func_change)]
-            return li
-
-        elif isinstance(lst[0],list):
-            for l in lst:
-                li += pont_corr(l)
-        return li
-
-    li += pont_corr(lst)
-    return li
-
-# apply func on every unique sequence in 'i'
-# !! update to more abstract approach (do away with arg)
-def rem_dup(i,end,func,arg):
-    con = []
-    for el in i:
-        con+=[el]
-        if el in end:
-            func(con,arg)
-            con = []
-
+'''For Plotting'''
 # plot for 2-D list
 def path_plot(path_cord, color):
     cn = np.array(path_cord)
@@ -354,6 +291,41 @@ def reslt_pot(pots):
     return res
 
 
+'''Conflict Resolution'''
+# flight conflict resolution
+def conf_resl(field,flights,flight,optimize=False):
+    global con_rad, dests
+
+    fls = []
+    con_rad = []
+    for f in flights:
+        if f != flight:
+            fls += [f]
+
+    con_rad = [f.pos for f in flights if f.pos not in dests and f!=flight]
+    pos = flight.pos
+    # visualization coord starts from 1 but in simulation it is 0, hence the need to reduce pos by 1 for simulation
+    fp = [pos[0],pos[1]]
+    print('initial flight pos',fp)
+    rf = field.fld
+
+    n_cord = nxt_pos(rf, fp, con_rad)
+
+    if len(n_cord) > 1:
+        if optimize:
+            np_cord = best_path(fp, rf, dests, field.max_pot, con_rad)
+        else:
+            np_cord = random.choices(n_cord, k=1)[0]
+    else:
+        np_cord = n_cord[0]
+    print('final flight pos', np_cord)
+    print('')
+
+    # simulation coord starts from 0 but in visualization it is 1, hence the need to increase pos by 1 for visualization
+    flight.pos=np_cord
+    flight.pot=rf[np_cord[1]-1][np_cord[0]-1]
+    return
+
 '''Collect Data'''
 # store objects
 def store_objects(store_container,*args):
@@ -414,111 +386,6 @@ def cal_flow(t_steps,flights,tma=None):
     flow=sum(col_fl_per_t(tma,flights,foc_flights))/(t_steps*len(flights))
     return flow
 
-'''Conflict Resolution'''
-# return content of different positions in object
-def pos_vals(obj,cord):
-    val=[]
-
-    # try stmnt to return large -ve value if index is not found
-    for c in cord:
-        try:
-            val+=[obj[c[1]][c[0]]]
-        except:
-            val+=[-10*math.exp(10**2)]
-    return val
-
-# resolve next position of flight
-def nxt_pos(field,pos):
-    fd=field
-    crds= obj_radius(1,pos)
-    cords=[]
-
-    # in case of -ve dimen. in coord., change to original pos
-    for c in crds:
-        if all([_>=0 for _ in c]):
-            cords+=[c]
-        else:
-            cords+=[pos]
-    vals=pos_vals(fd,cords) # vals content sequence is clockwise i.e pos,E,SE,S,...,NE
-    mvals=[i-vals[0] for i in vals]
-
-    # try stmnt to keep a_craft in a pos when potn around it is lesser or same
-    try:
-        npos_i=mvals.index(min([j for j in mvals if j > 0]))
-    except:
-        npos_i=mvals.index(min([j for j in mvals if j >= 0]))
-    return npos_i
-
-# flight conflict resolution
-def conf_resl(field,flights,flight):
-    global con_rad, dests
-
-    fls = []
-    con_rad = []
-    for f in flights:
-        if f != flight:
-            fls += [f]
-
-    con_rad = [f.pos for f in flights if f.pos not in dests and f!=flight]
-
-    pos = flight.pos
-    # visualization coord starts from 1 but in simulation it is 0, hence the need to reduce pos by 1 for simulation
-    fp = [pos[0]-1,pos[1]-1]
-    rf = field
-
-    npi = nxt_pos(rf,fp)
-
-    # rf[pos[0]][pos[1] + 1] == pt + 1 former concept
-    # no movement
-    if npi==0:
-        flight.pot = rf[fp[1]][fp[0]]
-        return
-    # Right
-    if npi==1 and [pos[0],pos[1] + 1] not in con_rad:
-        pos[1]=pos[1]+1
-        flight.pot = rf[fp[1]+1][fp[0]]
-        return
-    # Left
-    if npi==5 and [pos[0],pos[1] - 1] not in con_rad:
-        pos[1]=pos[1] - 1
-        flight.pot = rf[fp[1]-1][fp[0]]
-        return
-    # Down
-    if npi==3 and [pos[0]+1,pos[1]] not in con_rad:
-        pos[0]=pos[0] + 1
-        flight.pot = rf[fp[1]][fp[0]+1]
-        return
-    # Up
-    if npi==7 and [pos[0]-1,pos[1]] not in con_rad:
-        pos[0]=pos[0] - 1
-        flight.pot = rf[fp[1]][fp[0]-1]
-        return
-    # Up-right
-    if npi==8 and [pos[0] - 1,pos[1] + 1] not in con_rad:
-        pos[0] = pos[0] - 1
-        pos[1] = pos[1] + 1
-        flight.pot = rf[fp[1]+1][fp[0]-1]
-        return
-    # Down-right
-    if npi==2 and [pos[0] + 1,pos[1] + 1] not in con_rad:
-        pos[0] = pos[0] + 1
-        pos[1] = pos[1] + 1
-        flight.pot = rf[fp[1]+1][fp[0]+1]
-        return
-    # Up-left
-    if npi==6 and [pos[0] - 1,pos[1] - 1] not in con_rad:
-        pos[0] = pos[0] - 1
-        pos[1] = pos[1] - 1
-        flight.pot = rf[fp[1]-1][fp[0]-1]
-        return
-    # Down-left
-    if npi==4 and [pos[0] + 1,pos[1] - 1] not in con_rad:
-        pos[0] = pos[0] + 1
-        pos[1] = pos[1] - 1
-        flight.pot = rf[fp[1]-1][fp[0]+1]
-        return
-
-
 '''User Interaction'''
 def disp_ran_acraft_info():
     global acraft_info
@@ -529,6 +396,7 @@ def rand_acraft_info():
     global acraft_info
     return acraft_info
 
+# To generate coordinates for multiple aircraft object creation: for coordinates from given direction or random coordinates
 def ac_cords_arg(no_objs,grid_size,side=None):
     cords = None
     if side == 'up':
@@ -667,7 +535,7 @@ def plot_vis(t_step,tma):
     plt.savefig(images_file)
     plt.close()
 
-def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_clip,total_tstep=1):
+def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_clip,total_tstep=1,optimize_sim=False):
     global dests,loc_tma
 
     col_dept(flights)
@@ -693,7 +561,7 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_c
                     flight.disp_agg_pos = []
                 else:
                     # aircraft movement
-                    conf_resl(tma[0].fld,flights,flight)
+                    conf_resl(tma[0],flights,flight,optimize_sim)
                 flight.collect_pos()
                 flight.collect_distn()
             # plot visualization
@@ -708,7 +576,7 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_c
             t+=1
             mov_obstr_sim(tma[0],objs,mov_obstructions,t)
             for flight in flights:
-                conf_resl(tma[0].fld,flights,flight)
+                conf_resl(tma[0],flights,flight,optimize_sim)
                 flight.collect_pos()
                 flight.collect_distn()
 
@@ -743,8 +611,8 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_c
     # if show_vis_clip:
     #     vs.make_video(f'potential{clip_no}.mp4')
 
-def simulate(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_clip,total_tstep=1):
+def simulate(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_clip,total_tstep=1,optimize_sim=False):
     global a_cord
     a_cord = []
 
-    sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_clip,total_tstep)
+    sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_clip,total_tstep,optimize_sim)
