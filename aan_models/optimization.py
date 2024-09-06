@@ -1,5 +1,5 @@
 from pont_functions import nxt_pos, swi_cord_elem
-from cam_air_nav.cam_airnav_mod import avg_trans_time
+from cam_airnav_mod import avg_trans_time
 
 '''utility'''
 class Node():

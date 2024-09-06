@@ -7,7 +7,6 @@ from matplotlib import pyplot as plt
 from optimization import best_path
 from pont_functions import change_anydim_lst_sign,change_to_zero,change_sign,swi_cord_elem,ac_movement,nxt_pos
 
-import visualizations as vs
 from cam_airnav_mod import Air_Object, Free_Air_Object, avg_trans_time, col_dept
 from cam_airnavconfrules import obj_radius
 
