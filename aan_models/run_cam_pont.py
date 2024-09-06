@@ -1,6 +1,6 @@
 from matplotlib import pyplot as plt
 
-import visualizations as vs
+# import visualizations as vs
 from pontential_field import Aircraft, Waypoint, Stat_Obstruction,Mov_Obstruction,\
                             TMA, simulate, multiple_aircrafts, cal_flow, store_objects,disp_ran_acraft_info, rand_acraft_info,\
                             plot_vis, a_cord
@@ -35,7 +35,7 @@ sim_objects={}
 def make_sim_video(video_no):
     sim_field=sim_objects['field'][video_no-1][0]
     create_clips_vis(sim_field)
-    vs.make_video('potential.mp4')
+    # vs.make_video('potential.mp4')
 '''
 Create flight, waypoint, static obstructions and mobile obstructions objects f1,f2,f3,w1,w2,sob1,mob1...
 and include all objects needed in respective experiment list
