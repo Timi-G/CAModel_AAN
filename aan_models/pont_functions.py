@@ -1,7 +1,7 @@
 import math
 import random
 
-from cam_air_nav.cam_airnavconfrules import obj_radius
+from cam_airnavconfrules import obj_radius
 
 
 '''Abstract Modifiers/Correctors'''
