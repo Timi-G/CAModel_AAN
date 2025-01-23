@@ -204,8 +204,8 @@ def avg_trans_time(sim_agg_pos,des):
         ts+=[t]
         no_journ += 1
 
-    # get average transit time, even if journey isn't completed
-    avg = sum(ts) / no_journ if no_journ != 0 else t
+    # get average transit time, set it to 1 if journey isn't completed
+    avg = sum(ts) / no_journ if no_journ != 0 else 0
     return no_journ,avg
 
 def av_distn(tma,flights):

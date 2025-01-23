@@ -1,5 +1,6 @@
 import os
 import random
+import time
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -72,6 +73,10 @@ class TMA:
         self.avg_vel_a = 0
         self.avg_vel_b = 0
         self.sim_path_conf = {}
+        # available coordinates
+        a_cord_v = [[j,i] for i in range(grid_size[0]) for j in range(grid_size[1])]
+        a_cord_h = [[i,j] for i in range(grid_size[0]) for j in range(grid_size[1])]
+        self.a_cord=[a_cord_v,a_cord_h]
 
     def fd_dens(self,objs):
         self.dens=len(objs)/(self.g_size[0]*self.g_size[1])
@@ -97,7 +102,8 @@ class Aircraft(Obj_Field):
                 self.fp[m,n]=self.fp[m,n]-1
 
         # collect aggregate position of flight in a better readable form
-        self.coll_sim_agg_pos()
+        '''coll_sim_agg_pos is already done in final simulation step'''
+        # self.coll_sim_agg_pos()
         # self.agg_pos=conv_to_2d(self.agg_pos,2)
         # self.agg_pos=[[m[1],m[0]] for m in self.agg_pos]
 
@@ -157,7 +163,6 @@ loc_tma=None
 con_rad=[]
 dests=[]
 acraft_info=[]
-a_cord=[]
 
 
 '''For Plotting'''
@@ -361,7 +366,8 @@ def col_fl_per_t(tma,flights,foc_flights=None):
                     mv+=1
             except:
                 pass
-        tmv +=[mv]
+        tmv += [mv]
+    print('Total Movement', tmv)
     return tmv
 
 def vel_per_t(tma,flights):
@@ -382,7 +388,8 @@ def cal_flow(t_steps,flights,tma=None):
         tma=loc_tma
     # get position of flight in defined t_steps
     foc_flights=[fl.agg_pos[:t_steps] for fl in flights]
-    flow=sum(col_fl_per_t(tma,flights,foc_flights))/(t_steps*len(flights))
+    flow=sum(col_fl_per_t(tma,flights,foc_flights))/(t_steps)
+    # flow=sum(col_fl_per_t(tma,flights,foc_flights))/(t_steps*len(flights))
     return flow
 
 '''User Interaction'''
@@ -396,49 +403,83 @@ def rand_acraft_info():
     return acraft_info
 
 # To generate coordinates for multiple aircraft object creation: for coordinates from given direction or random coordinates
-def ac_cords_arg(no_objs,grid_size,side=None):
-    cords = None
+def ac_cords_arg(no_objs,grid_size,a_cord,side=None):
+    cords = []
     if side == 'up':
-        cords = ac_poss_pos(no_objs,grid_size[1],grid_size[0],1,"vertical")
+        cords = ac_poss_pos(no_objs,grid_size[1],grid_size[0],side,"vertical",a_cord)
     elif side == 'down':
-        cords = ac_poss_pos(no_objs, grid_size[1], grid_size[0], grid_size[0], "vertical")
+        cords = ac_poss_pos(no_objs, grid_size[1], grid_size[0], side, "vertical",a_cord)
     elif side == 'left':
-        cords = ac_poss_pos(no_objs, grid_size[0], grid_size[1], 1, "horizontal")
+        cords = ac_poss_pos(no_objs, grid_size[0], grid_size[1], side, "horizontal",a_cord)
     elif side == 'right':
-        cords = ac_poss_pos(no_objs, grid_size[0], grid_size[1], grid_size[1], "horizontal")
+        cords = ac_poss_pos(no_objs, grid_size[0], grid_size[1], side, "horizontal",a_cord)
     elif not side:
-        no=grid_size[0]*grid_size[1]
-        available_cords = ac_poss_pos(no, grid_size[0], grid_size[1], 1, "horizontal")
-        cords = random.choices(available_cords,k=no_objs)
+        # no=grid_size[0]*grid_size[1]
+        # available_cords = ac_poss_pos(no_objs, grid_size[0], grid_size[1], 'all', 'any',a_cord)
+        # print('available_cords',len(available_cords))
+        cords = random.sample(a_cord[0],k=no_objs)
+        for c in cords:
+            a_cord[0].remove(c)
+            a_cord[1].remove(c) 
     return cords
 
 # define possible positions of aircraft
 # line represents rows when side is up and down, it represents columns when side is left and right
-def ac_poss_pos(no_objs,grid_side_size,total_lines,start_line,orientation):
-    global a_cord
-    occup_cells=a_cord
-
+# a_cord is list of available coordinates in tma and is originally declared as [a_cord_v,a_cord_h] as a tma attribute
+def ac_poss_pos(no_objs,grid_side_size,total_lines,side,orientation,a_cord):
+    a_cord_v=a_cord[0]
+    a_cord_h=a_cord[1]
+    # print('a_cord_v',len(a_cord_v))
+    # print('a_cord_h',len(a_cord_h))
     poss_pos=[]
-    for l in range(1,total_lines+1):
-        for c in range(1,grid_side_size+1):
-            line = start_line-l if start_line!=1 else l
-            cell = c
-            if orientation == "vertical" and not [line,cell] in occup_cells:
-                poss_pos+=[[line,cell]]
-            elif orientation == "horizontal" and not [line,cell] in occup_cells:
-                poss_pos+=[[cell,line]]
-
+    if orientation=='any':
+        cells=a_cord_v
+        for c in cells:
+            poss_pos+=[c]
             if no_objs==len(poss_pos):
                 return poss_pos
+    elif orientation == "vertical":
+        for n in range(no_objs):
+            if side=='up':
+                poss_pos+=[a_cord_v.pop(0)]
+            elif side=='down':
+                poss_pos+=[a_cord_v.pop()]
+            a_cord_h.remove(poss_pos[-1])
+        return poss_pos
+    elif orientation == "horizontal":
+        for n in range(no_objs):
+            if side=='left':
+                poss_pos+=[a_cord_h.pop(0)]
+            elif side=='right':
+                poss_pos+=[a_cord_h.pop()]
+            a_cord_v.remove(poss_pos[-1])
+        return poss_pos
     return poss_pos
 
+    
+    # occup_cells=a_cord
+
+    # poss_pos=[]
+    # for l in range(1,total_lines+1):
+    #     for c in range(1,grid_side_size+1):
+    #         line = start_line-l if start_line!=1 else l
+    #         cell = c
+    #         if orientation == "vertical" and not [line,cell] in occup_cells:
+    #             poss_pos+=[[line,cell]]
+    #         elif orientation == "horizontal" and not [line,cell] in occup_cells:
+    #             poss_pos+=[[cell,line]]
+
+    #         if no_objs==len(poss_pos):
+    #             return poss_pos
+    # return poss_pos
+
 # create aircrafts by category, this function is used to create multiple aircrafts
-def cat_aircrafts(no_aircrafts,grid_size, max_pot, max_size, plt_colors, inf_rad, side=None, null_pont=False):
-    global acraft_info,a_cord
+def cat_aircrafts(no_aircrafts,grid_size, max_pot, max_size, plt_colors, inf_rad, a_cord, side=None, null_pont=False):
+    global acraft_info
     acrafts=[]
     a_info=[]
-    cords = ac_cords_arg(no_aircrafts,grid_size,side)
-    for n,_ in enumerate(range(no_aircrafts)):
+    cords = ac_cords_arg(no_aircrafts,grid_size,a_cord,side)
+    for n in range(no_aircrafts):
         # one cell to one aircraft
         row = cords[n][0]
         col = cords[n][1]
@@ -446,14 +487,14 @@ def cat_aircrafts(no_aircrafts,grid_size, max_pot, max_size, plt_colors, inf_rad
         ms = random.randint(1, max_size)
         pc = random.choice(plt_colors)
         ir = random.choice(inf_rad)
-        a_cord += [[row, col]]
         acrafts += [Aircraft(row=row, column=col, max_pot=mp, grid_size=grid_size, size=ms, plt_color=pc,
                              inf_rad=ir, null_pont=null_pont)]
         a_info += [{'row': row, 'column': col, 'max_pot': mp, 'max_size': ms, 'plt_color': pc, 'inf_rad':ir}]
     acraft_info += a_info
     return acrafts
 
-def multiple_aircrafts(max_pot,grid_size,max_size,plt_colors,inf_rad,rand_aircrafts=None,start_sides=None,null_pont=False):
+# a_cord is list of available coordinates in tma and is originally declared as [a_cord_v,a_cord_h]
+def multiple_aircrafts(max_pot,grid_size,max_size,plt_colors,inf_rad,a_cord,rand_aircrafts=None,start_sides=None,null_pont=False):
     acrafts=[]
     # check starting sides declared and number of starting sides for given aircrafts
     if start_sides:
@@ -461,11 +502,11 @@ def multiple_aircrafts(max_pot,grid_size,max_size,plt_colors,inf_rad,rand_aircra
         for side in sides:
             no_aircrafts=start_sides[side]
             if no_aircrafts:
-                acrafts+=cat_aircrafts(no_aircrafts,grid_size,max_pot,max_size,plt_colors,inf_rad,side,null_pont)
+                acrafts+=cat_aircrafts(no_aircrafts,grid_size,max_pot,max_size,plt_colors,inf_rad,a_cord,side,null_pont)
 
     # create random aircrafts from any sides
     if rand_aircrafts:
-        acrafts+=cat_aircrafts(rand_aircrafts, grid_size, max_pot, max_size, plt_colors, inf_rad, null_pont)
+        acrafts+=cat_aircrafts(rand_aircrafts, grid_size, max_pot, max_size, plt_colors, inf_rad,a_cord,null_pont=null_pont)
 
     return acrafts
 
@@ -541,6 +582,7 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_c
     # values of tma are set in the sim_field_gen method
     objs = flights + waypoints + tma + stat_obstructions
     dests = sim_field_gen(tma[0],objs,mov_obstructions)
+    des=swi_cord_elem(dests)
     # capture first movement
     if show_vis_clip:
         fl_paths(flights, 0)
@@ -563,6 +605,11 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_c
                     conf_resl(tma[0],flights,flight,optimize_sim)
                 flight.collect_pos()
                 flight.collect_distn()
+
+                if t==total_tstep:
+                    flight.coll_sim_agg_pos()
+                    flight.no_journ,flight.avg_tnstime = avg_trans_time(flight.sim_agg_pos,des)
+                    tma[0].transit_time+=flight.avg_tnstime
             # plot visualization
             if show_vis_clip:
                 fl_paths(flights, t)
@@ -594,15 +641,15 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_c
 
     # get average transit time of flights
     # derive sim_agg_pos first as it is needed to get transit time
-    des=swi_cord_elem(dests)
-    for f in flights:
-        f.coll_sim_agg_pos()
-        f.no_journ,f.avg_tnstime = avg_trans_time(f.sim_agg_pos,des)
-        tma[0].transit_time+=f.avg_tnstime
+    # des=swi_cord_elem(dests)
+    # for f in flights:
+    #     f.coll_sim_agg_pos()
+    #     f.no_journ,f.avg_tnstime = avg_trans_time(f.sim_agg_pos,des)
+    #     tma[0].transit_time+=f.avg_tnstime
     tma[0].avg_transit_time=tma[0].transit_time/len(flights)
 
     # av_distn(tma,flights) average distance func needs update
-    vel_per_t(tma[0],flights)
+    # vel_per_t(tma[0],flights)
 
     # set tma as a global variable loc_tma for further use acros the simulation
     loc_tma=tma[0]
@@ -611,7 +658,8 @@ def sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_c
     #     vs.make_video(f'potential{clip_no}.mp4')
 
 def simulate(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_clip,total_tstep=1,optimize_sim=False):
-    global a_cord
-    a_cord = []
-
+    print('simulation started')
+    st = time.process_time()
     sim_iter(flights,waypoints,stat_obstructions,mov_obstructions,tma,show_vis_clip,total_tstep,optimize_sim)
+    et = time.process_time()
+    print('simulation ended:',et-st,'seconds')

@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 # import visualizations as vs
 from pontential_field import Aircraft, Waypoint, Stat_Obstruction,Mov_Obstruction,\
                             TMA, simulate, multiple_aircrafts, cal_flow, store_objects,disp_ran_acraft_info, rand_acraft_info,\
-                            plot_vis
+                            plot_vis, a_cord
 
 
 #%%
@@ -80,22 +80,22 @@ if __name__ == '__main__':
     
     st = time.process_time()
     
-    rep = 1
+    rep = 10
     
     sim_objects_container={'field':[],'flights':[],'waypoints':[],'stat_obstructions':[],'mov_obstructions':[]}
 
-    t_steps = 50
+    t_steps = 300
     grid_size = [50, 50]
-    show_vis_clip = [True] * rep
+    show_vis_clip = [False] * rep
     # try the convention:
     # show_vis_clip = [True] * 3 + [True] * 5 + [False] * 2
-    total_flows = []
-    all_avg_transit_time = []
+    total_flows=[]
+    all_avg_transit_time=[]
 
     # declare variables for aircraft generation during repetition of simulation 
     # COMMENT 89-92 (SINGLE AIRCRAFT INSTANCE) AND UNCOMMENT 95-98 TO RUN MULTIPLE AIRCRAFT INSTANCES
-    no_rand_aircrafts = [22] # !! COUPLED TO LINE 122
-    no_aircrafts_from_sides = [[12,12,12,12]] # !! COUPLED TO LINE 123
+    no_rand_aircrafts = [3] # !! COUPLED TO LINE 122
+    no_aircrafts_from_sides = [[10,10,10,10]] # !! COUPLED TO LINE 123
     max_size = [3]
     max_pot = [5]
     optimize_sim = False
@@ -126,9 +126,9 @@ if __name__ == '__main__':
             #                         start_sides={'up':3,'down':1,'left':2,'right':1}, null_pont=False)
 
             # dynamic declaration of aircrafts for repetitive simulations only applies to variables fr3 & fr4
-            fr3 = multiple_aircrafts(rand_aircrafts=nra, max_size=ms, max_pot=mp, grid_size=grid_size, plt_colors=['w','g','m','y'],inf_rad=[4,5],null_pont=False,a_cord=tma.a_cord)
+            fr3 = multiple_aircrafts(rand_aircrafts=nra,max_size=ms,max_pot=mp,grid_size=grid_size,plt_colors=['w','g','m','y'],inf_rad=[4,5],null_pont=False)
             fr4 = multiple_aircrafts(max_pot=mp, grid_size=grid_size, max_size=ms, plt_colors=['b', 'r', 'm', 'g'],inf_rad=[3,5],
-                                    start_sides={'up':nas[0],'down':nas[1],'left':nas[2],'right':nas[3]}, null_pont=False,a_cord=tma.a_cord)
+                                    start_sides={'up':nas[0],'down':nas[1],'left':nas[2],'right':nas[3]}, null_pont=False)
 
             w1 = Waypoint(row=5, column=5, max_pot=7, grid_size=grid_size, size=2, inf_rad=3)
             w2 = Waypoint(row=5, column=15, max_pot=7, grid_size=grid_size, size=2, inf_rad=3)
@@ -148,7 +148,7 @@ if __name__ == '__main__':
             stat_obstructions = [sob1]
             mov_obstructions = [mob1,mob2]
 
-            simulate(flights, waypoints, stat_obstructions, mov_obstructions, field, show_single_clip, total_tstep=t_steps, optimize_sim=optimize_sim)
+            simulate(flights,waypoints,stat_obstructions,mov_obstructions,field,show_single_clip,total_tstep=t_steps,optimize_sim=optimize_sim)
 
             # save objects in simulation
             if show_single_clip:
@@ -165,12 +165,23 @@ if __name__ == '__main__':
         total_flows += [flows]
         all_avg_transit_time += [avg_transit_time]
         
-    et = time.process_time()
+    et = time.process_time()  
     
-    avg_exc_time = (et-st) / rep
+    avg_exc_time = (et-st) /  rep
     
     avg_flow = sum(flows) / len(flows)
     avg_trans = sum(avg_transit_time) / len(avg_transit_time)
     # make_sim_video(2)
     
     print(avg_flow, ',' , avg_trans, ',' , avg_exc_time)
+    
+    
+    
+    
+#%%%
+    
+    
+    
+    
+    
+#%%
