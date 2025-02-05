@@ -84,8 +84,8 @@ if __name__ == '__main__':
     
     sim_objects_container={'field':[],'flights':[],'waypoints':[],'stat_obstructions':[],'mov_obstructions':[]}
 
-    t_steps = 50
-    grid_size = [50, 50]
+    t_steps = 30
+    grid_size = [20, 20]
     show_vis_clip = [True] * rep
     # try the convention:
     # show_vis_clip = [True] * 3 + [True] * 5 + [False] * 2
@@ -94,8 +94,8 @@ if __name__ == '__main__':
 
     # declare variables for aircraft generation during repetition of simulation 
     # COMMENT 89-92 (SINGLE AIRCRAFT INSTANCE) AND UNCOMMENT 95-98 TO RUN MULTIPLE AIRCRAFT INSTANCES
-    no_rand_aircrafts = [22] # !! COUPLED TO LINE 122
-    no_aircrafts_from_sides = [[12,12,12,12]] # !! COUPLED TO LINE 123
+    no_rand_aircrafts = [20] # !! COUPLED TO LINE 122
+    no_aircrafts_from_sides = [[20,20,20,20]] # !! COUPLED TO LINE 123
     max_size = [3]
     max_pot = [5]
     optimize_sim = False

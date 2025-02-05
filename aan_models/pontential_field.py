@@ -355,7 +355,7 @@ def col_fl_per_t(tma,flights,foc_flights=None):
         t_agpos=foc_flights
         tot_tstep=max([len(ts) for ts in t_agpos])
     else:
-        t_agpos=[flight.agg_pos for flight in flights]
+        t_agpos=[flight.sim_agg_pos for flight in flights]
         tot_tstep=tma.tot_tstep=max([len(ts) for ts in t_agpos])
     # try..except to handle n which is beyond index for list elements
     for n in range(tot_tstep):
@@ -363,6 +363,8 @@ def col_fl_per_t(tma,flights,foc_flights=None):
         for m in t_agpos:
             try:
                 if m[n] != m[n+1]:
+                    # print(t_agpos)
+                    # print('Movement:', m[n], m[n+1])
                     mv+=1
             except:
                 pass
@@ -387,9 +389,8 @@ def cal_flow(t_steps,flights,tma=None):
         global loc_tma
         tma=loc_tma
     # get position of flight in defined t_steps
-    foc_flights=[fl.agg_pos[:t_steps] for fl in flights]
-    flow=sum(col_fl_per_t(tma,flights,foc_flights))/(t_steps)
-    # flow=sum(col_fl_per_t(tma,flights,foc_flights))/(t_steps*len(flights))
+    foc_flights=[fl.sim_agg_pos[:t_steps] for fl in flights]
+    flow=sum(col_fl_per_t(tma,flights,foc_flights))/(t_steps*len(flights))
     return flow
 
 '''User Interaction'''
