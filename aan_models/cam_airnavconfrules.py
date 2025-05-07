@@ -1,6 +1,8 @@
 from math import dist
 
 
+hov_fli=0
+
 '''Conflicts Resolution'''
 # resolving an object's conflict radius (size=1)
 def obj_radius(size, pos):
@@ -35,7 +37,7 @@ def conv_to_2d(arr,col):
 
 # to collect all possible destination of flight
 def poss_temp_dest(flight,wpp):
-    pt_dest = [flight.dest] + wpp
+    pt_dest = [flight.t_down] + wpp
     return pt_dest
 
 # determine coord. for best(considering waypoints & destination) path for flight
@@ -43,14 +45,21 @@ def cord_best_path(flight):
     wpp=flight.way_p
     pcord = flight.pos
     dest = poss_temp_dest(flight,wpp)
-
-# shortest distance from departure whether waypoint or destination
-    sht_dist= min(map(lambda y: dist(pcord,y),dest))
-    c_shdist = [i for i in dest if dist(pcord,i)==sht_dist][0]
-
+    # shortest distance from departure whether waypoint or destination
+    # sort waypoint flow
+    dest_sorted = sorted(wpp, key=lambda y: dist(pcord,y))
+    # sorted(list(map(lambda y: dist(pcord,y),wpp)))
+    
+    if flight.trajectory == 'short':
+        return [flight.t_down]
+    elif flight.trajectory == 'medium':
+        c_shdist = dest_sorted[0:-2]+[flight.t_down]
+        # c_shdist = [i for i in dest if dist(pcord,i)==sht_dist][0]
+    elif flight.trajectory == 'long':
+        c_shdist = dest_sorted + [flight.t_down]
     '''Update if flight should go straight to dest or wp dependent on distance'''
-    wp_des  = dist(c_shdist,flight.dest)
-    dep_des = dist(flight.pos,flight.dest)
+    # wp_des  = dist(c_shdist,flight.dest)
+    # dep_des = dist(flight.pos,flight.dest)
 
     return c_shdist
     # flight with shortest distance, to use variable later
@@ -110,11 +119,12 @@ def conf_flight_movement(flights,fl,obs_pos,des_conf_r):
     fls=[f for f in flights if f != fl]
 
     # one step destination of flight
-    temp_des = cord_best_path(fl)
-    fl.tdes = temp_des
+    # temp_des = cord_best_path(fl)
+    # fl.tdes = temp_des
 
     pos=fl.pos
-    tdes=temp_des
+    print('flight',fl.size,' ',fl.pos,fl.way_p[0])
+    fl.tdes=tdes=fl.way_p[0]
     des=fl.dest
 
     # define conflict radius around destination
