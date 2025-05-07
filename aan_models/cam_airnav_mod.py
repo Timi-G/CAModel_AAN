@@ -23,7 +23,9 @@ class Air_Object:
         self.pos = [dept[0],dept[1]]
         self.agg_pos = []
         self.sim_agg_pos = []
+        self.sing_disp_agg_pos = []
         self.disp_agg_pos = []
+        self.fp = []
         self.t_step = 0
         self.no_journ = 0
         self.avg_tnstime = 0
@@ -35,7 +37,7 @@ class Air_Object:
 # to define object path; combining the object's different progressive positions
     def collect_pos(self):
         self.agg_pos=self.agg_pos+self.pos
-        self.disp_agg_pos=self.disp_agg_pos+self.pos
+        self.sing_disp_agg_pos=self.sing_disp_agg_pos+self.pos
         if self.agg_pos[-3:-1] != self.dest:
             self.t_step += 1
 
@@ -45,9 +47,10 @@ class Air_Object:
 
 # the object path as a 2D array
     def flight_path(self):
-        fp = np.array(self.disp_agg_pos)
-        nfp = fp.reshape(-1,2)
-        self.fp = nfp.T
+        for dap in self.disp_agg_pos:
+            fp = np.array(dap)
+            nfp = fp.reshape(-1,2)
+            self.fp += [nfp.T]
 
 
 # to calculate & collect distance of obj pos to dest
@@ -97,7 +100,13 @@ class Field:
 
 # class to instantiate aircraft
 class Flight(Air_Object):
-    pass
+    def __init__(self, dept, dest, t_down, trajectory, size):
+        self.t_down = t_down
+        self.trajectory = trajectory
+        super().__init__(dept, dest, size)
+    # def touch_down(self, direction):
+    #     if direction == 'north':
+    #         self.t_down = [self.dest[0], self.dest[1]]
 
 # class to instantiate waypoint
 class Waypoint(Free_Air_Object):
@@ -111,7 +120,13 @@ class Point(Free_Air_Object):
     pass
 
 class TMA(Field):
-    pass
+    def avail_coords(self):
+        grid_size=self.coord
+        # available coordinates
+        a_cord_ns = [[i,j] for i in range(grid_size[0][0],grid_size[0][1]+1) for j in range(grid_size[1][0],grid_size[1][1]+1)]
+        a_cord_we = [[i,j] for j in range(grid_size[1][0],grid_size[1][1]+1) for i in range(grid_size[0][0],grid_size[0][1]+1)]
+        self.a_cord=[a_cord_ns,a_cord_we]
+        return self.a_cord
 
 
 '''Global Variables'''
@@ -238,8 +253,9 @@ def path_plots(fpaths):
 
     for fpath in fpaths:
         fpath.flight_path()
-        x,y=fpath.fp
-        plt.plot(x,y)
+        for fp in fpath.fp:
+            x,y=fp
+            plt.plot(x,y)
 
 # to plot waypoints
 def wp_plots(wpp):
@@ -255,6 +271,11 @@ def obs_plots(obp):
         x, y = nob.T
         plt.plot(x,y,'bo')
 
+def dest_plots(dsp):
+    for ds in dsp:
+        nds = np.array(dsp)
+        x, y = nds.T
+        plt.plot(x,y,'y*')
 
 '''Display'''
 # to display to user density at waypoints for each t_step
@@ -297,34 +318,46 @@ def split_num(num):
 # coord is the coordinates used to randomly set aircraft departure
 # i) ga parameter takes 'None' arg or a list arg [[x1,y1],[x2,y2],[x3,y3]...]
 # ii) dependent on if func is being used in the Genetic Algorithm Experiment (ga_airnav.py) or not
-def inst_flights(num_flights,coord,dest,size,ga=None):
+def inst_flights(all_flights,direction,tma_acord,coord,dest,t_down,trajectory,size,ga=None):
     flights = []
+    num_flights = all_flights[direction]
+    
     if ga:
         for a_dep in ga:
-            flights += [Flight(dept=a_dep, dest=dest, size=size)]
+            flights += [Flight(dept=a_dep, dest=dest, t_down=t_down, trajectory=trajectory, size=size)]
     else:
         # ensure created aircrafts maintain conflict rules
         for _ in range(1, num_flights + 1):
-            if num_flights >= 1:
-                # aircraft creation
-                flights += [Flight(dept=[random.randint(*coord[0]), random.randint(*coord[1])], dest=dest, size=size)]
+            # aircraft creation
+            if len(coord) > 0:
+                if direction=='north':
+                    dept=coord.pop(0)
+                elif direction=='south':
+                    dept=coord.pop()
+                elif direction=='west':
+                    dept=coord.pop(0)
+                elif direction=='east':
+                    dept=coord.pop()
+                flights += [Flight(dept=dept, dest=dest, t_down=t_down, trajectory=trajectory, size=size)]
+                tma_acord[0].remove(dept)
+                tma_acord[1].remove(dept)
                 con_rad = []
                 # check for conflict
                 ccf.objs_con_rad(flights[-2:],con_rad)
                 # resolve conflict
-                if flights[-1].dept in con_rad:
-                    del flights[-1]
-                    need_resolve = True
-                    while need_resolve:
-                        flight = Flight(dept=[random.randint(*coord[0]), random.randint(*coord[1])], dest=dest, size=size)
-                        if not flight.dept in con_rad:
-                            flights += [flight]
-                            need_resolve = False
+                # if flights[-1].dept in con_rad:
+                #     del flights[-1]
+                #     need_resolve = True
+                #     while need_resolve:
+                #         flight = Flight(dept=[random.randint(*coord[0]), random.randint(*coord[1])], dest=dest, size=size)
+                #         if not flight.dept in con_rad:
+                #             flights += [flight]
+                #             need_resolve = False
     return flights
 
 # func for creating flights by subdir
-def _dep_flights(num_flights, coord, dest, size, ga):
-    fl=inst_flights(num_flights, coord, dest, size,ga)
+def _dep_flights(all_flights, direction, tma_acord, coord, dest, t_down, trajectory, size, ga):
+    fl=inst_flights(all_flights,direction,tma_acord, coord, dest, t_down, trajectory, size,ga)
     return fl
 
 # tma_sect is a list complete coord of 'x' or 'y' axis that spread will be applied to
@@ -337,29 +370,36 @@ def get_spread_range(spread,tma_sect):
     return spread_range
 
 # func to create flights
-def create_flights(north,south,east,west,tma_coord,dest,size,spread,ga=None):
-    all_flights=[north,south,east,west]
+def create_flights(north,south,east,west,tma,dest,t_down,trajectory,size,spread,ga=None):
+    # all_flights=[north, south, east, west]
+    all_flights={'north': north, 'south': south, 'east': east, 'west': west}
     n,s,e,w=0,0,0,0
+    tma_range = tma.coord
+    tma_acord = tma.a_cord
 
     # north & south
-    ns_spr_range = get_spread_range(spread, tma_coord[1])
-    if all_flights[0] != 0:
-        n_coords = [tma_coord[0],[tma_coord[1][1]-ns_spr_range,tma_coord[1][1]]]
-        n = _dep_flights(north,n_coords,dest,size,ga)
+    ns_spr_range = get_spread_range(spread, tma_range[1])
+    if all_flights['north'] != 0:
+        n_coords = [tma_range[0],[int(tma_range[1][1]-ns_spr_range),tma_range[1][1]]]
+        coords = [[i,j] for i in range(n_coords[0][0],n_coords[0][1]+1) for j in range(n_coords[1][0],n_coords[1][1]+1) if [i,j] in tma_acord[0] and [i,j] in tma_acord[1]]
+        n = _dep_flights(all_flights,'north',tma_acord,coords,dest,t_down,trajectory,size,ga)
 
-    if all_flights[1] != 0:
-        s_coords = [tma_coord[0],[tma_coord[1][0],tma_coord[1][0]+ns_spr_range]]
-        s = _dep_flights(south,s_coords,dest,size,ga)
+    if all_flights['south'] != 0:
+        s_coords = [tma_range[0],[tma_range[1][0],int(tma_range[1][0]+ns_spr_range)]]
+        coords = [[i,j] for i in range(s_coords[0][0],s_coords[0][1]+1) for j in range(s_coords[1][0],s_coords[1][1]+1) if [i,j] in tma_acord[0] and [i,j] in tma_acord[0]]
+        s = _dep_flights(all_flights,'south',tma_acord,coords,dest,t_down,trajectory,size,ga)
 
     # east & west
-    ew_spr_range = get_spread_range(spread, tma_coord[0])
-    if all_flights[2] != 0:
-        e_coords = [[tma_coord[0][0],tma_coord[0][0]+ew_spr_range],tma_coord[1]]
-        e = _dep_flights(east, e_coords, dest, size, ga)
+    ew_spr_range = get_spread_range(spread, tma_range[0])
+    if all_flights['east'] != 0:
+        e_coords = [[tma_range[0][0],int(tma_range[0][0]+ew_spr_range)],tma_range[1]]
+        coords = [[i,j] for j in range(e_coords[1][0],e_coords[1][1]+1) for i in range(e_coords[0][0],e_coords[0][1]+1) if [i,j] in tma_acord[1] and [i,j] in tma_acord[0]]
+        e = _dep_flights(all_flights,'east', tma_acord, coords, dest, t_down, trajectory, size, ga)
 
-    if all_flights[3] != 0:
-        w_coords = [[tma_coord[0][0]-ew_spr_range,tma_coord[0][1]], tma_coord[1]]
-        w = _dep_flights(west, w_coords, dest, size, ga)
+    if all_flights['west'] != 0:
+        w_coords = [[int(tma_range[0][0]-ew_spr_range),tma_range[0][1]], tma_range[1]]
+        coords = [[i,j] for j in range(w_coords[1][0],w_coords[1][1]+1) for i in range(w_coords[0][0],w_coords[0][1]+1) if [i,j] in tma_acord[1] and [i,j] in tma_acord[0]]
+        w = _dep_flights(all_flights,'west', tma_acord, coords, dest, t_down, trajectory, size, ga)
 
     flights_raw = [n,s,e,w]
     flights = [fl for fl in flights_raw if fl != 0]
@@ -381,6 +421,7 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,total_tstep):
     # write all waypoints in each flights waypoint variable
     for f in flights:
         f.way_p=[w.pos for w in waypoints]
+        f.way_p=ccf.cord_best_path(f)
 
     flights_dest = [fd.dest for fd in flights]
 
@@ -394,10 +435,16 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,total_tstep):
                 if flight.pos in flight.way_p:
                     flight.way_p.remove(flight.pos)
 
+                if flight.pos == flight.t_down:
+                    flight.way_p = [flight.dest]
+
                 # cycle flight/boundary condtion
                 if flight.pos==flight.dest:
+                    flight.disp_agg_pos+=[flight.sing_disp_agg_pos]
+                    flight.sing_disp_agg_pos=[]
                     flight.pos[0],flight.pos[1]=flight.dept[0],flight.dept[1]
-                    flight.disp_agg_pos=[]
+                    flight.way_p=[w.pos for w in waypoints]
+                    flight.way_p=ccf.cord_best_path(f)
                     col_dept_sing(flight)
 
         # collect flight densities at points for each t_step
@@ -425,7 +472,10 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,total_tstep):
     path_plots(flights)
     wp_plots(wpp)
     obs_plots(obp)
+    dest_plots(flights_dest)
     plt.show()
+    plt.savefig('plot.png')
+    plt.close()
 
     # resolve sim_agg_pos for flights &
     # get average transit time of flights
