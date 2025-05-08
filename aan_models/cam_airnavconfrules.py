@@ -6,7 +6,10 @@ hov_fli=0
 '''Conflicts Resolution'''
 # resolving an object's conflict radius (size=1)
 def obj_radius(size, pos):
-    rad=[pos]
+    if isinstance(pos[0],list):
+        rad = pos
+    else:
+        rad=[pos]
 
     for m in range(size):
         rn=len(rad)
@@ -51,7 +54,7 @@ def cord_best_path(flight):
     # sorted(list(map(lambda y: dist(pcord,y),wpp)))
     
     if flight.trajectory == 'short':
-        return [flight.t_down]
+        return [dest_sorted[0]]+[flight.t_down]
     elif flight.trajectory == 'medium':
         c_shdist = dest_sorted[0:-2]+[flight.t_down]
         # c_shdist = [i for i in dest if dist(pcord,i)==sht_dist][0]
@@ -114,6 +117,7 @@ def NE(pos):
 def NN(pos):
     pos[1] = pos[1] + 1
 
+
 # flight movement in conflict and non-conflict
 def conf_flight_movement(flights,fl,obs_pos,des_conf_r):
     fls=[f for f in flights if f != fl]
@@ -123,9 +127,10 @@ def conf_flight_movement(flights,fl,obs_pos,des_conf_r):
     # fl.tdes = temp_des
 
     pos=fl.pos
-    print('flight',fl.size,' ',fl.pos,fl.way_p[0])
+    # print('flight',fl.size,' ',fl.pos,fl.way_p[0])
     fl.tdes=tdes=fl.way_p[0]
     des=fl.dest
+    t_down=fl.t_down
 
     # define conflict radius around destination
     con_des=obj_radius(des_conf_r,des)
@@ -138,6 +143,7 @@ def conf_flight_movement(flights,fl,obs_pos,des_conf_r):
 
     con_rad=[]
     objs_con_rad(fls,con_rad)
+    con_rad+=fl.desconrad
 
     # add pos of obstructions to con_rad
     con_rad+=obs_pos

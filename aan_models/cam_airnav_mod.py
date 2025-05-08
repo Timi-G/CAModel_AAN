@@ -33,6 +33,25 @@ class Air_Object:
         self.distn = 0
         self.agg_distn = []
         self.sim_agg_distn = []
+    
+    @staticmethod
+    def get_path_twopoints(t_down, dest):
+        # get path between t_down to dest on x-axis
+        if t_down[0] > dest[0]:
+            p0=list(range(dest[0],t_down[0]+1))
+        elif t_down[0] < dest[0]:
+            p0=list(range(t_down[0],dest[0]+1))
+        elif t_down[0] == dest[0]:
+            p0=list([t_down[0]]*abs(t_down[1]-dest[1]))
+
+        # get path between t_down to dest on y-axis
+        if t_down[1] > dest[1]:
+            p1=list(range(dest[1],t_down[1]+1))
+        elif t_down[1] < dest[1]:
+            p1=list(range(t_down[1],dest[1]+1))
+        elif t_down[1] == dest[1]:
+            p1=list([t_down[1]]*abs(t_down[0]-dest[0]))
+        return list(map(lambda x,y:[x,y],p0,p1))
 
 # to define object path; combining the object's different progressive positions
     def collect_pos(self):
@@ -102,8 +121,10 @@ class Field:
 class Flight(Air_Object):
     def __init__(self, dept, dest, t_down, trajectory, size):
         self.t_down = t_down
+        self.desconrad = []
         self.trajectory = trajectory
         super().__init__(dept, dest, size)
+    
     # def touch_down(self, direction):
     #     if direction == 'north':
     #         self.t_down = [self.dest[0], self.dest[1]]
@@ -409,7 +430,7 @@ def create_flights(north,south,east,west,tma,dest,t_down,trajectory,size,spread,
 
 '''Simulation'''
 # simulate flights
-def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,total_tstep):
+def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,no_flyzone_size,tdown_dest_path_size,total_tstep):
     # collect departures in flight agg_pos and get points conflict dens
     col_dept(flights)
     p_con_rad(waypoints)
@@ -423,7 +444,19 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,total_tstep):
         f.way_p=[w.pos for w in waypoints]
         f.way_p=ccf.cord_best_path(f)
 
-    flights_dest = [fd.dest for fd in flights]
+    flights_dest=[]
+    desconrad=[]
+    for fd in flights:
+        flights_dest += [fd.dest]
+        # destination buffer or block
+        desconrad+=ccf.obj_radius(no_flyzone_size,fd.dest)
+        # path from touch down to destination
+        # direct path
+        tdown_dest = Air_Object.get_path_twopoints(fd.t_down,fd.dest)
+        # buffer path by including radius around it
+        tdown_dest = ccf.obj_radius(tdown_dest_path_size,tdown_dest)
+        # remove coord of path from touch down to destination in destination block to create access for flights to destination
+        fd.desconrad = [dc for dc in desconrad if dc not in tdown_dest]
 
     if total_tstep>1:
         for t in range(total_tstep):
@@ -487,7 +520,7 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,total_tstep):
 
 
 # container function for simulation
-def simulate(tma,flights,waypoints,obstructions,points,total_tsteps):
+def simulate(tma,flights,waypoints,obstructions,points,no_flyzone_size,tdown_dest_path_size,total_tsteps):
     flights_pos=[f.pos for f in flights]
 
-    sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,total_tsteps)
+    sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,no_flyzone_size,tdown_dest_path_size,total_tsteps)
