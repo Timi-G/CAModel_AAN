@@ -6,6 +6,7 @@ hov_fli=0
 '''Conflicts Resolution'''
 # resolving an object's conflict radius (size=1)
 def obj_radius(size, pos):
+    size = size-1
     if isinstance(pos[0],list):
         rad = pos
     else:
@@ -128,7 +129,7 @@ def conf_flight_movement(flights,fl,obs_pos,des_conf_r):
 
     pos=fl.pos
     # print('flight',fl.size,' ',fl.pos,fl.way_p[0])
-    fl.tdes=tdes=fl.way_p[0]
+    fl.tdes=tdes=fl.next
     des=fl.dest
     t_down=fl.t_down
 
