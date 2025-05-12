@@ -33,24 +33,25 @@ if __name__ == '__main__':
 
     dest = [5,5]
     t_down = [20,5]
-    no_flyzone_size=7
-    tdown_dest_path_size=2
-    f1 = Flight(dept=[-7,3], dest=dest, t_down=t_down, trajectory='short', size=2)
-    f2 = Flight(dept=[25,25], dest=dest, t_down=t_down, trajectory='short', size=1)
-    f3 = Flight(dept=[12,0], dest=dest, t_down=t_down, trajectory='medium', size=3) #[3,8]
-    f4 = Flight(dept=[13,9], dest=dest, t_down=t_down, trajectory='short', size=1)
-    f5 = Flight(dept=[5,5], dest=dest, t_down=t_down, trajectory='short', size=1) #[10,3]
-    f6 = Flight(dept=[1,1], dest=dest, t_down=t_down, trajectory='long', size=1) #[15,2]
+    no_flyzone_size=5
+    tdown_dest_path_size=0
 
-    fr1 = create_flights(north=3, south=2, east=0, west=0, tma=tma, dest=dest, t_down=t_down, trajectory='long', size=1, spread=3) #[5, 1]
-    fr2 = create_flights(north=1, south=0, east=2, west=4, tma=tma, dest=dest, t_down=t_down, trajectory='short', size=2, spread=1) #[7, 15]
-    fr3 = create_flights(north=2, south=1, east=1, west=0, tma=tma, dest=dest, t_down=t_down, trajectory='medium', size=1, spread=2) #[17, 20]
-
-    w1 = Waypoint(pos=[-13,20], size=1)
-    w2 = Waypoint(pos=[10,20], size=1)
+    w1 = Waypoint(pos=[-13,20], size=2)
+    w2 = Waypoint(pos=[10,20], size=2)
     w3 = Waypoint(pos=[-5,5], size=1)
-    w4 = Waypoint(pos=[20,-8], size=1)
+    w4 = Waypoint(pos=[20,-8], size=3)
     w5 = Waypoint(pos=[-10,-8], size=1)
+
+    f1 = Flight(dept=[-7,3], dest=dest, t_down=t_down, waypoints=[w1,w2,w3], size=2)
+    f2 = Flight(dept=[25,25], dest=dest, t_down=t_down, waypoints=[w3,w2,w1], size=1)
+    f3 = Flight(dept=[12,0], dest=dest, t_down=t_down, waypoints=[w4,w5,w2], size=2) #[3,8]
+    f4 = Flight(dept=[13,9], dest=dest, t_down=t_down, waypoints=[w5,w2,w3,w4], size=1)
+    f5 = Flight(dept=[5,5], dest=dest, t_down=t_down, waypoints=[w4,w5,w3], size=1) #[10,3]
+    f6 = Flight(dept=[1,1], dest=dest, t_down=t_down, waypoints=[w1,w2,w3, w5], size=1) #[15,2]
+
+    fr1 = create_flights(north=3, south=2, east=0, west=0, tma=tma, dest=dest, t_down=t_down, waypoints=[w1,w2,w3], size=1, spread=1) #[5, 1]
+    fr2 = create_flights(north=1, south=0, east=2, west=4, tma=tma, dest=dest, t_down=t_down, waypoints=[w2,w4,w3,w5], size=2, spread=1) #[7, 15]
+    fr3 = create_flights(north=2, south=4, east=1, west=0, tma=tma, dest=dest, t_down=t_down, waypoints=[w2,w1,w3,w4], size=1, spread=1) #[17, 20]
 
     ob1 = Obstruction(pos=[0,10], size=2)
     ob2 = Obstruction(pos=[5,10], size=3)
@@ -62,13 +63,13 @@ if __name__ == '__main__':
     p1 = Point(pos=[6,2], size=2)
     p2 = Point(pos=[10,5], size=3)
 
-    flights = fr1+fr2+[f1,f2,f3,f4,f5,f6]
-    waypoints = [w1,w2,w4,w5]
+    flights = fr1+fr3+[f1,f2,f3]
+    waypoints = [w1,w2,w3,w4,w5]
     obstructions = []
     points = [p1,p2]
 
 
 # to run simulation
-    simulate(tma,flights,waypoints,obstructions,points,no_flyzone_size,tdown_dest_path_size,total_tsteps=300)
+    simulate(tma,flights,waypoints,obstructions,points,no_flyzone_size,tdown_dest_path_size,total_tsteps=100)
 
-    display_results(tma,flights,waypoints)
+    # display_results(tma,flights,waypoints)
