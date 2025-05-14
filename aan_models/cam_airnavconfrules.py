@@ -53,7 +53,7 @@ def cord_best_path(flight):
     # sort waypoint flow
     dest_sorted = sorted(wpp, key=lambda y: dist(pcord,y))
     # sorted(list(map(lambda y: dist(pcord,y),wpp)))
-    
+
     if flight.trajectory == 'short':
         return [dest_sorted[0]]+[flight.t_down]
     elif flight.trajectory == 'medium':
@@ -219,13 +219,13 @@ def conf_flight_movement(flights,fl,obs_pos,des_conf_r):
             else:
                 hov_fli += 1
             return
-        # SS
-        if [pos[0], pos[1] - 1] not in con_rad:
-            SS(pos)
-            return
         # NN
         if [pos[0], pos[1] + 1] not in con_rad:
             NN(pos)
+            return
+        # SS
+        if [pos[0], pos[1] - 1] not in con_rad:
+            SS(pos)
             return
         # SE
         if [pos[0] + 1, pos[1] - 1] not in con_rad:
@@ -284,8 +284,7 @@ def conf_flight_movement(flights,fl,obs_pos,des_conf_r):
         if [pos[0] + 1, pos[1] - 1] not in con_rad:
             SE(pos)
             return
-        else:
-            return
+        return
 
     # best path NN
     if tdes[0] - pos[0] == 0 and tdes[1] - pos[1] > 0:
@@ -329,8 +328,7 @@ def conf_flight_movement(flights,fl,obs_pos,des_conf_r):
         if [pos[0], pos[1] - 1] not in con_rad:
             SS(pos)
             return
-        else:
-            return
+        return
 
     # best path NE
     if tdes[0] - pos[0] > 0 and tdes[1] - pos[1] > 0:
@@ -362,20 +360,19 @@ def conf_flight_movement(flights,fl,obs_pos,des_conf_r):
         if [pos[0] - 1, pos[1] + 1] not in con_rad:
             NW(pos)
             return
-        # SS
-        if [pos[0], pos[1] - 1] not in con_rad:
-            SS(pos)
-            return
         # WW
         if [pos[0] - 1, pos[1]] not in con_rad:
             WW(pos)
+            return
+        # SS
+        if [pos[0], pos[1] - 1] not in con_rad:
+            SS(pos)
             return
         # SW
         if [pos[0] - 1, pos[1] - 1] not in con_rad:
             SW(pos)
             return
-        else:
-            return
+        return
 
     # best path EE
     if tdes[0] - pos[0] > 0 and tdes[1] - pos[1] == 0:
@@ -403,10 +400,6 @@ def conf_flight_movement(flights,fl,obs_pos,des_conf_r):
         if [pos[0], pos[1] - 1] not in con_rad:
             SS(pos)
             return
-        # NN
-        if [pos[0], pos[1] + 1] not in con_rad:
-            NN(pos)
-            return
         # SW
         if [pos[0] - 1, pos[1] - 1] not in con_rad:
             SW(pos)
@@ -415,12 +408,15 @@ def conf_flight_movement(flights,fl,obs_pos,des_conf_r):
         if [pos[0] - 1, pos[1] + 1] not in con_rad:
             NW(pos)
             return
+        # NN
+        if [pos[0], pos[1] + 1] not in con_rad:
+            NN(pos)
+            return
         # WW
         if [pos[0] - 1, pos[1]] not in con_rad:
             WW(pos)
             return
-        else:
-            return
+        return
 
     # best path SE
     if tdes[0] - pos[0] > 0 and tdes[1] - pos[1] < 0:
@@ -456,14 +452,15 @@ def conf_flight_movement(flights,fl,obs_pos,des_conf_r):
         if [pos[0], pos[1] + 1] not in con_rad:
             NN(pos)
             return
-        # NW
-        if [pos[0] - 1, pos[1] + 1] not in con_rad:
-            NW(pos)
-            return
         # WW
         if [pos[0] - 1, pos[1]] not in con_rad:
             WW(pos)
             return
+        # NW
+        if [pos[0] - 1, pos[1] + 1] not in con_rad:
+            NW(pos)
+            return
+        return
 
     # best path SS
     if tdes[0] - pos[0] == 0 and tdes[1] - pos[1] < 0:
@@ -491,13 +488,13 @@ def conf_flight_movement(flights,fl,obs_pos,des_conf_r):
         if [pos[0] + 1, pos[1]] not in con_rad:
             EE(pos)
             return
-        # WW
-        if [pos[0] - 1, pos[1]] not in con_rad:
-            WW(pos)
-            return
         # NE
         if [pos[0] + 1, pos[1] + 1] not in con_rad:
             NE(pos)
+            return
+        # WW
+        if [pos[0] - 1, pos[1]] not in con_rad:
+            WW(pos)
             return
         # NW
         if [pos[0] - 1, pos[1] + 1] not in con_rad:
@@ -507,5 +504,4 @@ def conf_flight_movement(flights,fl,obs_pos,des_conf_r):
         if [pos[0], pos[1] + 1] not in con_rad:
             NN(pos)
             return
-        else:
-            return
+        return
