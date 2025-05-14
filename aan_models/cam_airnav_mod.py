@@ -130,8 +130,8 @@ class Flight(Air_Object):
         super().__init__(dept, dest, size)
     
     def next_point(self):
-        if self.way_p:
-            self.next=self.way_p[0].con_rad[0]
+        if self.way_p < len(self.waypoints):
+            self.next=self.waypoints[self.way_p].con_rad[0]
         else:
             self.next=self.t_down
     # def touch_down(self, direction):
@@ -451,7 +451,7 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,no_flyzone_si
     # write all waypoints in each flights waypoint variable
     for f in flights:
         # f.way_p=ccf.cord_best_path(f)
-        f.way_p=f.waypoints
+        f.way_p=0
         f.next_point()
         #f.way_p=[w.pos for w in waypoints]
 
@@ -476,9 +476,9 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,no_flyzone_si
                 flight.collect_pos()
                 flight.collect_distn()
                 
-                # print(flight.pos,' ',flight.way_p[0].con_rad)
-                if flight.way_p and flight.pos in flight.way_p[0].con_rad:
-                    flight.way_p.pop(0)
+                # print(flight.pos,' ',flight.waypoints[0].con_rad)
+                if flight.way_p < len(flight.waypoints) and flight.pos in flight.waypoints[flight.way_p].con_rad:
+                    flight.way_p+=1
                     flight.next_point()
 
                 if flight.pos == flight.t_down:
@@ -489,7 +489,7 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,no_flyzone_si
                     flight.disp_agg_pos+=[flight.sing_disp_agg_pos]
                     flight.sing_disp_agg_pos=[]
                     flight.pos[0],flight.pos[1]=flight.dept[0],flight.dept[1]
-                    flight.way_p=flight.waypoints
+                    flight.way_p=0
                     # flight.way_p=ccf.cord_best_path(f)
                     col_dept_sing(flight)
 
@@ -504,8 +504,8 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,no_flyzone_si
                 flight.collect_pos()
                 flight.collect_distn()
 
-                if flight.way_p and flight.pos in flight.way_p[0].con_rad:
-                    flight.way_p.pop(0)
+                if flight.way_p < len(flight.waypoints) and flight.pos in flight.waypoints[flight.way_p].con_rad:
+                    flight.way_p+=1
                     flight.next_point()
 
                 if flight.pos == flight.t_down:
