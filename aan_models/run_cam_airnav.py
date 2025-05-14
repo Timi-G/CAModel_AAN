@@ -31,14 +31,14 @@ if __name__ == '__main__':
     tma.coord = [[-5,50],[-10,50]]
     a_cord = tma.avail_coords()
 
-    dest = [5,5]
+    dest = [5,6]
     t_down = [20,5]
-    no_flyzone_size=5
-    tdown_dest_path_size=0
+    no_flyzone_size=3
+    tdown_dest_path_size=1
 
     w1 = Waypoint(pos=[-13,20], size=2)
     w2 = Waypoint(pos=[10,20], size=2)
-    w3 = Waypoint(pos=[-5,5], size=1)
+    w3 = Waypoint(pos=[15,5], size=1)
     w4 = Waypoint(pos=[20,-8], size=3)
     w5 = Waypoint(pos=[-10,-8], size=1)
 
@@ -63,13 +63,13 @@ if __name__ == '__main__':
     p1 = Point(pos=[6,2], size=2)
     p2 = Point(pos=[10,5], size=3)
 
-    flights = fr1+fr3+[f1,f2,f3]
+    flights = [f1]
     waypoints = [w1,w2,w3,w4,w5]
     obstructions = []
     points = [p1,p2]
 
 
 # to run simulation
-    simulate(tma,flights,waypoints,obstructions,points,no_flyzone_size,tdown_dest_path_size,total_tsteps=100)
+    simulate(tma,flights,waypoints,obstructions,points,no_flyzone_size,tdown_dest_path_size,total_tsteps=80)
 
-    # display_results(tma,flights,waypoints)
+    #display_results(tma,flights,waypoints)
