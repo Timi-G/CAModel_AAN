@@ -52,6 +52,11 @@ class Air_Object:
             p1=list(range(t_down[1],dest[1]+1))
         elif t_down[1] == dest[1]:
             p1=list([t_down[1]]*abs(t_down[0]-dest[0]+1))
+
+        if len(p0) < len(p1):
+            p0=p0+list([p0[-1]]*(len(p1)-len(p0)))
+        elif len(p1) < len(p0):
+            p1=p1+list([p1[-1]]*(len(p0)-len(p1)))
         p = list(map(lambda x,y:[x,y],p0,p1))
         return p
 
@@ -490,6 +495,7 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,no_flyzone_si
                     flight.sing_disp_agg_pos=[]
                     flight.pos[0],flight.pos[1]=flight.dept[0],flight.dept[1]
                     flight.way_p=0
+                    flight.next_point()
                     # flight.way_p=ccf.cord_best_path(f)
                     col_dept_sing(flight)
 
