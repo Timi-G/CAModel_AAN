@@ -356,7 +356,7 @@ def split_num(num):
 def inst_flights(all_flights,direction,tma_acord,coord,dest,t_down,trajectory,size,waypoints=None,ga=None):
     flights = []
     num_flights = all_flights[direction]
-    
+
     if ga:
         for a_dep in ga:
             flights += [Flight(dept=a_dep, dest=dest, t_down=t_down, waypoints=waypoints, trajectory=trajectory, size=size)]
@@ -368,17 +368,17 @@ def inst_flights(all_flights,direction,tma_acord,coord,dest,t_down,trajectory,si
                 if direction=='north':
                     dept=coord.pop(0)
                 elif direction=='south':
-                    dept=coord.pop()
-                elif direction=='west':
                     dept=coord.pop(0)
                 elif direction=='east':
-                    dept=coord.pop()
+                    dept=coord.pop(0)
+                elif direction=='west':
+                    dept=coord.pop(0)
                 flights += [Flight(dept=dept, dest=dest, t_down=t_down, waypoints=waypoints, trajectory=trajectory, size=size)]
                 tma_acord[0].remove(dept)
                 tma_acord[1].remove(dept)
                 con_rad = []
                 # check for conflict
-                ccf.objs_con_rad(flights[-2:],con_rad)
+                objs_con_rad(flights[-2:],con_rad)
                 # resolve conflict
                 # if flights[-1].dept in con_rad:
                 #     del flights[-1]
@@ -416,31 +416,30 @@ def create_flights(north,south,east,west,tma,dest,t_down,size,spread,trajectory=
     ns_spr_range = get_spread_range(spread, tma_range[1])
     if all_flights['north'] != 0:
         n_coords = [tma_range[0],[int(tma_range[1][1]-ns_spr_range),tma_range[1][1]]]
-        coords = [[i,j] for i in range(n_coords[0][0],n_coords[0][1]+1) for j in range(n_coords[1][0],n_coords[1][1]+1) if [i,j] in tma_acord[0] and [i,j] in tma_acord[1]]
+        coords = [[i,j] for j in range(n_coords[1][0],n_coords[1][1]+1) for i in range(n_coords[0][0],n_coords[0][1]+1) if [i,j] in tma_acord[0] and [i,j] in tma_acord[1]]
         n = _dep_flights(all_flights,'north',tma_acord,coords,dest,t_down,trajectory,size,waypoints,ga)
 
     if all_flights['south'] != 0:
         s_coords = [tma_range[0],[tma_range[1][0],int(tma_range[1][0]+ns_spr_range)]]
-        coords = [[i,j] for i in range(s_coords[0][0],s_coords[0][1]+1) for j in range(s_coords[1][0],s_coords[1][1]+1) if [i,j] in tma_acord[0] and [i,j] in tma_acord[0]]
+        coords = [[i,j] for j in range(s_coords[1][0],s_coords[1][1]+1) for i in range(s_coords[0][0],s_coords[0][1]+1) if [i,j] in tma_acord[0] and [i,j] in tma_acord[0]]
         s = _dep_flights(all_flights,'south',tma_acord,coords,dest,t_down,trajectory,size,waypoints,ga)
 
     # east & west
     ew_spr_range = get_spread_range(spread, tma_range[0])
     if all_flights['east'] != 0:
-        e_coords = [[tma_range[0][0],int(tma_range[0][0]+ew_spr_range)],tma_range[1]]
-        coords = [[i,j] for j in range(e_coords[1][0],e_coords[1][1]+1) for i in range(e_coords[0][0],e_coords[0][1]+1) if [i,j] in tma_acord[1] and [i,j] in tma_acord[0]]
+        e_coords = [[int(tma_range[0][1]-ew_spr_range),tma_range[0][1]],tma_range[1]]
+        coords = [[i,j] for i in range(e_coords[0][0],e_coords[0][1]+1) for j in range(e_coords[1][0],e_coords[1][1]+1) if [i,j] in tma_acord[1] and [i,j] in tma_acord[0]]
         e = _dep_flights(all_flights,'east', tma_acord, coords, dest, t_down, trajectory, size,waypoints,ga)
 
     if all_flights['west'] != 0:
-        w_coords = [[int(tma_range[0][0]-ew_spr_range),tma_range[0][1]], tma_range[1]]
-        coords = [[i,j] for j in range(w_coords[1][0],w_coords[1][1]+1) for i in range(w_coords[0][0],w_coords[0][1]+1) if [i,j] in tma_acord[1] and [i,j] in tma_acord[0]]
+        w_coords = [[tma_range[0][0],int(tma_range[0][0]+ew_spr_range)], tma_range[1]]
+        coords = [[i,j] for i in range(w_coords[0][0],w_coords[0][1]+1) for j in range(w_coords[1][0],w_coords[1][1]+1) if [i,j] in tma_acord[1] and [i,j] in tma_acord[0]]
         w = _dep_flights(all_flights,'west', tma_acord, coords, dest, t_down, trajectory, size, waypoints, ga)
 
     flights_raw = [n,s,e,w]
     flights = [fl for fl in flights_raw if fl != 0]
     flights = [f for fl in flights for f in fl]
     return flights
-
 
 '''Simulation'''
 # simulate flights
