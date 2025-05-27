@@ -5,7 +5,7 @@ from tqdm import tqdm
 from matplotlib import pyplot as plt
 import numpy as np
 
-import cam_airnavconfrules as ccf
+from cam_airnavconfrules import obj_radius, conv_to_2d, cord_best_path, objs_con_rad, conf_flight_movement
 
 '''Object Classes'''
 # dept:departure, dest:destination, size:object_size_class
@@ -59,12 +59,12 @@ class Air_Object:
             p1=p1+list([p1[-1]]*(len(p0)-len(p1)))
         p = list(map(lambda x,y:[x,y],p0,p1))
         return p
-    
+
     @staticmethod
     def choose_path(paths,prob):
         waypoints=random.choices(paths,weights=prob,k=1)[0]
         return waypoints
-    
+
 # to define object path; combining the object's different progressive positions
     def collect_pos(self):
         self.agg_pos=self.agg_pos+self.pos
@@ -146,6 +146,13 @@ class Flight(Air_Object):
             self.next=self.waypoints[self.way_p].con_rad[0]
         else:
             self.next=self.t_down
+
+    def restart(self):
+        self.pos[0],self.pos[1]=self.dept[0],self.dept[1]
+        self.agg_pos=[]
+        self.sim_agg_pos=[]
+        self.sing_agg_pos= []
+        self.t_step=0
     # def touch_down(self, direction):
     #     if direction == 'north':
     #         self.t_down = [self.dest[0], self.dest[1]]
@@ -254,8 +261,10 @@ def avg_trans_time(sim_agg_pos,des):
         t += 1
         if f == des or f in des:
             ts += [t]
-            t = 0
             no_journ += 1
+            avg = t
+            return no_journ,avg
+            t = 0
     # record transit time even when flight never gets to destination
     if t:
         ts+=[t]
@@ -287,6 +296,12 @@ def vel_per_t(ps,flights,t_steps):
     for p in ps:
         p.avg_vel=sum(p.agg_vel)/t_steps
     # velocity = [nf / len(flights) for nf in no_fl] to use/update velocity definition as required
+
+def average_flights_transit_time(flights):
+    tns_time=[f.avg_tnstime for f in flights]
+    tot_tns_time=sum(tns_time)
+    avg_tns_time=tot_tns_time/len(flights)
+    return avg_tns_time
 
 
 '''Plots'''
@@ -426,24 +441,24 @@ def create_flights(north,south,east,west,tma,dest,t_down,paths,path_prob,size,sp
     # north & south
     ns_spr_range = get_spread_range(spread, tma_range[1])
     if all_flights['north'] != 0:
-        n_coords = [tma_range[0],[int(tma_range[1][1]-ns_spr_range),tma_range[1][1]]]
-        coords = [[i,j] for j in range(n_coords[1][0],n_coords[1][1]+1) for i in range(n_coords[0][0],n_coords[0][1]+1) if [i,j] in tma_acord[0] and [i,j] in tma_acord[1]]
+        n_coords = [[int(tma_range[0][1]-ns_spr_range),tma_range[0][1]],tma_range[1]]
+        coords = [[i,j] for j in range(n_coords[1][1],n_coords[1][0]-1,-1) for i in range(n_coords[0][0],n_coords[0][1]+1) if [i,j] in tma_acord[0] and [i,j] in tma_acord[1]]
         n = _dep_flights(all_flights,'north',tma_acord,coords,dest,t_down,trajectory,size,paths,path_prob,ga)
 
     if all_flights['south'] != 0:
-        s_coords = [tma_range[0],[tma_range[1][0],int(tma_range[1][0]+ns_spr_range)]]
+        s_coords = [[int(tma_range[0][1]-ns_spr_range),tma_range[0][1]],tma_range[1]]
         coords = [[i,j] for j in range(s_coords[1][0],s_coords[1][1]+1) for i in range(s_coords[0][0],s_coords[0][1]+1) if [i,j] in tma_acord[0] and [i,j] in tma_acord[0]]
         s = _dep_flights(all_flights,'south',tma_acord,coords,dest,t_down,trajectory,size,paths,path_prob,ga)
 
     # east & west
     ew_spr_range = get_spread_range(spread, tma_range[0])
     if all_flights['east'] != 0:
-        e_coords = [[int(tma_range[0][1]-ew_spr_range),tma_range[0][1]],tma_range[1]]
-        coords = [[i,j] for i in range(e_coords[0][0],e_coords[0][1]+1) for j in range(e_coords[1][0],e_coords[1][1]+1) if [i,j] in tma_acord[1] and [i,j] in tma_acord[0]]
+        e_coords = [tma_range[0],[int(tma_range[1][1]-ew_spr_range),tma_range[1][1]]]
+        coords = [[i,j] for i in range(e_coords[0][1],e_coords[0][0]-1,-1) for j in range(e_coords[1][0],e_coords[1][1]+1) if [i,j] in tma_acord[1] and [i,j] in tma_acord[0]]
         e = _dep_flights(all_flights,'east', tma_acord, coords, dest, t_down, trajectory, size,paths,path_prob,ga)
 
     if all_flights['west'] != 0:
-        w_coords = [[tma_range[0][0],int(tma_range[0][0]+ew_spr_range)], tma_range[1]]
+        w_coords = [tma_range[0],[int(tma_range[1][1]-ew_spr_range),tma_range[1][1]]]
         coords = [[i,j] for i in range(w_coords[0][0],w_coords[0][1]+1) for j in range(w_coords[1][0],w_coords[1][1]+1) if [i,j] in tma_acord[1] and [i,j] in tma_acord[0]]
         w = _dep_flights(all_flights,'west', tma_acord, coords, dest, t_down, trajectory, size, paths, path_prob, ga)
 
@@ -493,7 +508,7 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,no_flyzone_si
             for flight in flights:
                 conf_flight_movement(flights, flight, obp, 0)
                 flight.collect_pos()
-                flight.collect_distn()
+                # flight.collect_distn()
 
                 # print(flight.pos,' ',flight.waypoints[0].con_rad)
                 if flight.way_p < len(flight.waypoints) and flight.pos in flight.waypoints[flight.way_p].con_rad:
@@ -517,45 +532,74 @@ def sim_iter(tma,flights,flights_pos,waypoints,obstructions,points,no_flyzone_si
             dens(waypoints, flights_pos, total_tstep)
             dens(points, flights_pos, total_tstep)
 
-    elif total_tstep==1:
-        while True:
-            for flight in flights:
-                conf_flight_movement(flights,flight,obp, 1)
-                flight.collect_pos()
-                flight.collect_distn()
+        # save final path flight took in cases it didn't get to the destination
+        for fl in flights:
+            fl.disp_agg_pos+=[fl.sing_disp_agg_pos]
+            fl.sing_disp_agg_pos=[]
 
-                if flight.way_p < len(flight.waypoints) and flight.pos in flight.waypoints[flight.way_p].con_rad:
-                    flight.way_p+=1
-                    flight.next_point()
+        path_plots(flights)
+        wp_plots(wpp)
+        obs_plots(obp)
+        dest_plots(flights_dest)
+        plt.show()
+        # plt.savefig('plot.png')
+        plt.close()
 
-                if flight.pos == flight.t_down:
-                    flight.next = flight.dest
+        # resolve sim_agg_pos for flights &
+        # get average transit time of flights
+        for f in flights:
+            f.coll_sim_agg_pos()
+            f.avg_transit_time()
+        # av_distn(tma,flights)
 
+        print('flight simulation complete!')
+        print()
+        print('calculating transit time...')
+
+    if True:
+        for flight in flights:
+            tot_poss_mov = 0
+            # set flight to go through all possible paths
+            for path in [flight.waypoints]:
+                # restart journey for flight
+                flight.restart()
+                col_dept_sing(flight)
+                flight.waypoints = path
+                flight.way_p=0
+                flight.next_point()
+                while True:
+                    conf_flight_movement([flight],flight,obp, 0)
+                    flight.collect_pos()
+                    # flight.collect_distn()
+
+                    if flight.way_p < len(flight.waypoints) and flight.pos in flight.waypoints[flight.way_p].con_rad:
+                        flight.way_p+=1
+                        flight.next_point()
+
+                    if flight.pos in flight.tdown_dest and flight.way_p == len(flight.waypoints):
+                        # print('touch_down reached', flight.pos)
+                        flight.next = flight.dest
+
+                    if flight.pos == flight.dest:
+                        flight.coll_sim_agg_pos()
+                        no_journ,tns_time=avg_trans_time(flight.sim_agg_pos,flight.dest)
+                        tot_poss_mov+=tns_time
+                        # tot_poss_mov+=len(flight.sim_agg_pos)
+                        # self.no_journ,self.avg_tnstime = avg_trans_time(self.sim_agg_pos,self.dest)
+                        break
+            # avg_poss_mov=tot_poss_mov/len(flight.paths)
+            # print('total mov without holding',tot_poss_mov)
+            # print('without holding',tot_poss_mov)
+            # print('with holding',flight.avg_tnstime)
+            flight.avg_tnstime = flight.avg_tnstime/tot_poss_mov
         # collect flight densities at points for each t_step
-            dens(waypoints, flights_pos, total_tstep)
-            dens(points, flights_pos, total_tstep)
+        print('calculation complete!')
+        dens(waypoints, flights_pos, total_tstep)
+        dens(points, flights_pos, total_tstep)
 
-        # stop simulation when destination is reached
-            if flights_pos == flights_dest:
-                break
-
-    for fl in flights:
-        fl.disp_agg_pos+=[fl.sing_disp_agg_pos]
-    path_plots(flights)
-    wp_plots(wpp)
-    obs_plots(obp)
-    dest_plots(flights_dest)
-    plt.show()
-    plt.savefig('plot.png')
-    plt.close()
-
-    # resolve sim_agg_pos for flights &
-    # get average transit time of flights
-    for f in flights:
-        f.coll_sim_agg_pos()
-        f.avg_transit_time()
-    av_distn(tma,flights)
-    vel_per_t(points,flights,total_tstep)
+        # # stop simulation when destination is reached
+        #     if flights_pos == flights_dest:
+        #         break
 
 
 # container function for simulation
