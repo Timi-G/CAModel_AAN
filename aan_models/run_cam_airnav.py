@@ -1,5 +1,5 @@
 from cam_airnav_mod import Flight, Waypoint, Obstruction, TMA, Point,\
-                            simulate, display_results, create_flights
+                            simulate, display_results, create_flights, average_flights_transit_time
 
 '''
 Create flight, waypoint & obstruction objects f1,f2,f3,w1,w2,ob1,ob2...
@@ -16,7 +16,8 @@ get average density around points with p1.avg_dens,p2.avg_dens,w1.avg_dens....
 get average velocity with p1.avg_vel,p2.avg_vel...
 get average distance with tma.av_dist
 get average transit time with f1.avg_transit_time(), f2.avg_transit_time()...
-
+get average transit time of flights with average_flights_transit_time(flights)
+____________________________________________________________
 '''
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
@@ -31,14 +32,14 @@ if __name__ == '__main__':
     tma.coord = [[-5,50],[-10,50]]
     a_cord = tma.avail_coords()
 
-    dest = [5,6]
+    dest = [5,5]
     t_down = [20,5]
-    no_flyzone_size=3
+    no_flyzone_size=4
     tdown_dest_path_size=1
 
-    w1 = Waypoint(pos=[-13,20], size=2)
-    w2 = Waypoint(pos=[10,20], size=2)
-    w3 = Waypoint(pos=[25,5], size=1)
+    w1 = Waypoint(pos=[-4,20], size=2)
+    w2 = Waypoint(pos=[10,20], size=1)
+    w3 = Waypoint(pos=[25,5], size=2)
     w4 = Waypoint(pos=[20,-8], size=3)
     w5 = Waypoint(pos=[-10,-8], size=1)
 
@@ -49,14 +50,14 @@ if __name__ == '__main__':
     path5 = [w4,w5,w3]
     path6 = [w1,w2,w3, w5]
 
-    f1 = Flight(dept=[-7,3], dest=dest, t_down=t_down, paths=[path1,path3,path4], path_prob=[3,5,2], size=2)
+    f1 = Flight(dept=[-4,3], dest=dest, t_down=t_down, paths=[path1,path3,path4], path_prob=[3,5,2], size=2)
     f2 = Flight(dept=[25,25], dest=dest, t_down=t_down, paths=[path5,path1,path2], path_prob=[3,5,2], size=1)
     f3 = Flight(dept=[12,0], dest=dest, t_down=t_down, paths=[path2,path3], path_prob=[3,7,], size=2) #[3,8]
     f4 = Flight(dept=[13,9], dest=dest, t_down=t_down, paths=[path6,path1,path2], path_prob=[3,5,2], size=1)
-    f5 = Flight(dept=[5,5], dest=dest, t_down=t_down, paths=[path4], path_prob=[10], size=1) #[10,3]
+    f5 = Flight(dept=[15,5], dest=dest, t_down=t_down, paths=[path4], path_prob=[10], size=1) #[10,3]
     f6 = Flight(dept=[1,1], dest=dest, t_down=t_down, paths=[path5,path1,path6], path_prob=[3,1,2,4], size=1) #[15,2]
 
-    fr1 = create_flights(north=5, south=15, east=6, west=10, tma=tma, dest=dest, t_down=t_down, paths=[path2,path3,path5,path4], path_prob=[2,3,1,4], size=1, spread=1) #[5, 1]
+    fr1 = create_flights(north=0, south=10, east=5, west=0, tma=tma, dest=dest, t_down=t_down, paths=[path2,path3,path5,path4], path_prob=[2,3,1,4], size=1, spread=4) #[5, 1]
     fr2 = create_flights(north=1, south=0, east=2, west=4, tma=tma, dest=dest, t_down=t_down, paths=[path6,path1], path_prob=[3,7], size=2, spread=1) #[7, 15]
     fr3 = create_flights(north=2, south=4, east=1, west=0, tma=tma, dest=dest, t_down=t_down, paths=[path1,path2,path3], path_prob=[3,5,2], size=1, spread=1) #[17, 20]
 
@@ -70,13 +71,16 @@ if __name__ == '__main__':
     p1 = Point(pos=[6,2], size=2)
     p2 = Point(pos=[10,5], size=3)
 
-    flights = [f1]
+    flights = fr1+[f1,f2,f3,f4,f5]
     waypoints = [w1,w2,w3,w4,w5]
     obstructions = []
     points = [p1,p2]
 
 
 # to run simulation
-    simulate(tma,flights,waypoints,obstructions,points,no_flyzone_size,tdown_dest_path_size,total_tsteps=350)
-
+    simulate(tma,flights,waypoints,obstructions,points,no_flyzone_size,tdown_dest_path_size,total_tsteps=150)
     # display_results(tma,flights,waypoints)
+
+    # average transit time sample usage
+    t_time=average_flights_transit_time(flights[0:])
+    print(t_time)
